@@ -3,4 +3,7 @@ plugins {
 }
 
 dependencies {
+    implementation(libs.minestom)
+    implementation(libs.kotlinx.coroutines)
+    implementation(project(":core"))
 }
