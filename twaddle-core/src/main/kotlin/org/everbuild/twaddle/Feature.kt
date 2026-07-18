@@ -1,5 +1,7 @@
 package org.everbuild.twaddle
 
+import kotlinx.coroutines.GlobalScope
+import kotlinx.coroutines.future.future
 import net.kyori.adventure.key.Key
 import net.kyori.adventure.key.KeyPattern
 import java.util.concurrent.CompletionStage

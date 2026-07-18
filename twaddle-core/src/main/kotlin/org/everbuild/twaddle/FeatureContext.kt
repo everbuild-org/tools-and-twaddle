@@ -17,5 +17,6 @@ class FeatureContext(
         TODO()
     }
 
+    @JvmName("getExt")
     fun <T : Any> FeatureDependency<T>.get(): T = get(this)
 }
