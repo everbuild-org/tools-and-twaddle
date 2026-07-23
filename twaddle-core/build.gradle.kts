@@ -4,5 +4,6 @@ plugins {
 
 dependencies {
     implementation(libs.minestom)
+    implementation(libs.slf4j)
     implementation(libs.kotlinx.coroutines)
 }

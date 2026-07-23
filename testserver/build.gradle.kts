@@ -3,10 +3,9 @@ plugins {
 }
 
 dependencies {
+    implementation(libs.slf4j)
     implementation(libs.minestom)
     implementation(libs.kotlinx.coroutines)
-    implementation(libs.tinylog.api)
-    implementation(libs.tinylog.impl)
-    implementation(libs.tinylog.slf4j)
+    runtimeOnly(libs.bundles.log4j.runtime)
     implementation(project(":twaddle-core"))
 }
