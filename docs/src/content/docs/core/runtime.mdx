@@ -1,0 +1,89 @@
+---
+title: Core runtime
+description: Application lifetime, coroutine ownership, phased work, and deterministic shutdown.
+---
+
+import Classification from '../../../components/Classification.astro';
+
+<Classification placement="Foundation" concern="Runtime" maturity="Experimental" />
+
+`TwaddleContext` owns coroutine work, resources, and child lifetimes. A root context normally lives as long as the server
+application; child contexts can represent the lifetime of one module or feature.
+
+## Create the root context
+
+Kotlin applications normally use `runTwaddleApplication { ... }`, which creates the root context and shuts it down when
+the application block finishes. Java applications can call `TwaddleContext.root()` and close it with `shutdownNow()` in
+a `finally` block.
+
+## Own resources
+
+Pass an `AutoCloseable` to `own` as soon as the application creates it:
+
+```kotlin
+val service = context.own(MyService())
+```
+
+Resources close in reverse acquisition order. Offering another resource after shutdown has begun closes that resource
+immediately and throws `IllegalStateException`, preventing an unowned resource from escaping.
+
+## Launch lifetime work
+
+Because `TwaddleContext` implements `CoroutineScope`, work launched on it is cancelled before resources close:
+
+```kotlin
+context.launch {
+    refreshStateUntilCancelled()
+}
+```
+
+The context uses `Dispatchers.Default` and a named lifetime job. A parent coroutine context can be supplied when the
+application needs structured ownership by constructing `TwaddleContextImpl` directly.
+
+## Create child lifetimes
+
+`fork(name)` creates a named child context. The parent owns the child and shuts it down in the same reverse order as
+other resources:
+
+```kotlin
+val inventoryContext = context.fork("inventory")
+inventoryContext.launch {
+    refreshInventoriesUntilCancelled()
+}
+```
+
+A child can shut down without affecting its parent. Nested names retain their ownership path, such as
+`twaddle/inventory/persistence`. `forked(name) { child -> ... }` is the expression form and returns the block's result;
+the child remains owned by its parent after the block returns.
+
+## Add the initialized server
+
+`initialized(server)` returns a `TwaddleServerContext`. It exposes the supplied `MinecraftServer` and delegates lifetime
+ownership to the same underlying context:
+
+```kotlin
+val server = MinecraftServer.init(Auth.Online())
+val serverContext = context.initialized(server)
+```
+
+Use `TwaddleServerContext` as a module parameter when that module cannot be installed before Minestom initialization.
+
+## Shut down
+
+- `shutdown()` is suspending and safe to call more than once.
+- Concurrent callers wait for the first shutdown to finish.
+- `shutdownNow()` is the blocking Java-friendly adapter.
+- `runTwaddleApplication { ... }` constructs and shuts down a context around a suspending application block.
+
+The application block defines the lifetime. Because `MinecraftServer.start(...)` returns after starting Minestom's
+threads, a standalone application must keep the block alive until its shutdown signal arrives.
+
+## Work that needs Minestom
+
+`AfterInit<A>` is an alias for a suspending function from `MinecraftServer` to `A`:
+
+```kotlin
+typealias AfterInit<A> = suspend (MinecraftServer) -> A
+```
+
+Use it when setup can be prepared before `MinecraftServer.init(...)` but can only complete with the initialized server.

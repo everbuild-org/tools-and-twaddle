@@ -25,14 +25,6 @@ Tools and twaddle is built around a few strong opinions:
 - Server features should be isolated enough to develop, test, and replace independently.
 - The framework should make it easier to build actual projects, not just quick prototypes.
 
-## What it provides
-While the exact feature set depends on the current implementation, the intended shape of the framework is:
-- A DI context for building and testing server software based on koin
-- A structured bootstrap and lifecycle model for different elements
-- Shared conventions for configuration, service registration, and cross-module communication.
-- An opinionated developer experience on top of Minestom's low-level primitives.
-
-
 ## Design principles
 
 ### Pluggable by default
@@ -50,14 +42,6 @@ mod loader; it is trying to give Minestom-based servers a better composition mod
 ### Built for codebases, not demos
 The framework should scale from isolated experiments to larger projects with multiple systems, contributors, and
 deployment environments.
-
-## Getting started
-Until the public API settles, the best way to approach Tools and twaddle is as a framework for experimentation:
-1. Start with a small Minestom project.
-2. Add Tools and twaddle as the organizational layer around it.
-3. Keep gameplay logic in isolated modules.
-4. Expect breaking changes while the architecture matures.
-5. Use the project to validate patterns before committing to long-term APIs.
 
 ## Who this is for
 Tools and twaddle is a good fit if you:

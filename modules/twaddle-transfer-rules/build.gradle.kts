@@ -4,6 +4,6 @@ plugins {
 
 dependencies {
     implementation(libs.minestom)
-    implementation(libs.slf4j)
-    api(libs.kotlinx.coroutines)
+    implementation(projects.twaddleCore)
 }
+

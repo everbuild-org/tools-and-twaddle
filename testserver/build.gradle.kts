@@ -7,5 +7,7 @@ dependencies {
     implementation(libs.minestom)
     implementation(libs.kotlinx.coroutines)
     runtimeOnly(libs.bundles.log4j.runtime)
-    implementation(project(":twaddle-core"))
+
+    implementation(projects.twaddleCore)
+    implementation(projects.modules.twaddleTransferRules)
 }

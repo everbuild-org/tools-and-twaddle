@@ -1,0 +1,21 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - "**"
+
+permissions:
+  contents: read
+
+jobs:
+  release:
+    name: Release
+    if: ${{ vars.RELEASES_ENABLED == 'true' }}
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Release is not configured
+        run: |
+          echo "Configure the release steps before setting RELEASES_ENABLED to true."
+          exit 1
