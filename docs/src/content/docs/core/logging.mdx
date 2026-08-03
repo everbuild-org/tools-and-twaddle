@@ -1,0 +1,49 @@
+---
+title: Structured logging
+description: Lazy SLF4J messages with key-value fields for Kotlin and Java.
+---
+
+import Classification from '../../../components/Classification.astro';
+
+<Classification placement="Foundation" concern="Observability" maturity="Experimental" />
+
+The logging helpers build on SLF4J 2's event API. They do not select a logging backend; the application provides one at
+runtime.
+
+## Kotlin API
+
+Create a logger for the calling class and attach structured fields with the `field` infix function:
+
+```kotlin
+import org.everbuild.twaddle.core.logging.field
+import org.everbuild.twaddle.core.logging.info
+import org.everbuild.twaddle.core.logging.logger
+
+private val log = logger()
+
+log.info(
+    "auth" field "online",
+    "port" field 25565,
+) {
+    "Test server binding"
+}
+```
+
+The message lambda is evaluated only when its level is enabled. `trace`, `debug`, `info`, `warn`, `error`, and the
+general `log` function accept fields and an optional throwable.
+
+Logger construction is also available as `loggerFor<T>()` and `logger(name)`.
+
+## Java API
+
+`StructuredLog` exposes static overloads accepting either a `String` or `Supplier<String>`. Create fields with
+`LogField.field(key, value)`:
+
+```java
+StructuredLog.info(LOGGER, "Test server binding",
+    LogField.field("auth", "online"),
+    LogField.field("port", 25565)
+);
+```
+
+Configure an SLF4J provider—such as Log4j's SLF4J implementation—in the application, not in the foundation library.

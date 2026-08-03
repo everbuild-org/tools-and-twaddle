@@ -1,0 +1,55 @@
+---
+title: Tools & twaddle
+description: A small, opinionated toolkit for composing Minestom servers without hiding Minestom.
+template: splash
+---
+
+import { Card, CardGrid } from '@astrojs/starlight/components';
+import { Image } from 'astro:assets';
+import icon from '../../assets/icon.png';
+
+<div class="landing-shell">
+	<section class="pixel-hero">
+		<div class="pixel-hero__copy">
+			<p class="pixel-eyebrow">TOOLS AND TWADDLE</p>
+			<h1>Structure for servers that stay yours.</h1>
+			<p class="pixel-lede">
+				An experimental Minestom toolkit for explicit lifetimes, composable features,
+				and direct access to the runtime underneath.
+			</p>
+			<div class="pixel-actions">
+				<a class="pixel-button pixel-button--primary" href="/getting-started/">Start building <span>→</span></a>
+				<a class="pixel-button" href="/concepts/architecture/">How it fits together</a>
+			</div>
+		</div>
+
+		<div class="toolbox-mark">
+			<Image src={icon} alt="An open red toolbox filled with block-built tools" />
+		</div>
+	</section>
+
+
+	<section class="landing-section">
+		<p class="section-label">CURRENT CAPABILITIES</p>
+		<h2>A small kit on purpose.</h2>
+		<p class="section-intro">
+			The foundation owns process-wide concerns. Modules own gameplay policy.
+			Take only what your server needs, keep what sticks.
+		</p>
+
+		<CardGrid>
+			<Card title="Lifecycle ownership" icon="setting">
+				A coroutine-aware context owns long-lived work and closes resources in a predictable order.
+			</Card>
+			<Card title="Fun for the whole JVM" icon="pencil">
+			    "Kotlin First, Java friendly." is the philosophy we put into our design.
+			</Card>
+			<Card title="Minestom stays visible" icon="puzzle">
+				Small conveniences extend Minestom instead of replacing it with another server abstraction.
+			</Card>
+			<Card title="Composable APIs" icon="list-format">
+			    Use these APIs in tandem to your existing server stack. Provide what you have, use what you need.
+			</Card>
+		</CardGrid>
+	</section>
+</div>
