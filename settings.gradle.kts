@@ -10,10 +10,10 @@ plugins {
 }
 
 include(":twaddle-core")
-includeImmediateChildren("modules", "module")
+includeImmediateChildren("modules")
 include(":testserver")
 
-fun includeImmediateChildren(path: String, prefix: String) {
+fun includeImmediateChildren(path: String) {
     File(path).listFiles()?.forEach { file ->
         if (file.isDirectory) {
             include(":$path:${file.name}")
