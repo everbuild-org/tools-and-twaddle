@@ -1,0 +1,91 @@
+---
+title: Getting started
+description: Add the foundation to a Minestom server and give its work an explicit lifetime.
+---
+import { Tabs, TabItem } from '@astrojs/starlight/components';
+
+Publication coordinates are not stable yet. The dependency examples assume your server is a project in this repository
+and use its type-safe project accessors.
+
+Also, make sure you understand [Minestom](https://minestom.net) before continuing as this guide won't cover it.
+
+## Add the foundation
+
+Not all Twaddle features need a running core. Look at the page of your feature to see what it needs.
+
+```kotlin title="build.gradle.kts"
+dependencies {
+    implementation(projects.twaddleCore)
+}
+```
+
+The application lifecycle has four phases:
+
+1. Twaddle creates the root context.
+2. Pre-init modules are installed.
+3. Minestom is initialized.
+4. Modules that need the server are installed.
+
+<Tabs syncKey="jvm-language">
+    <TabItem label="Kotlin">
+Create the server directly and wrap the process lifetime with `runTwaddleApplication`.
+When the application block finishes or fails, the context cancels lifetime coroutine work and closes owned resources.
+```kotlin
+import kotlinx.coroutines.awaitCancellation
+import net.minestom.server.Auth
+import net.minestom.server.MinecraftServer
+import org.everbuild.twaddle.core.runTwaddleApplication
+
+suspend fun main() = runTwaddleApplication { cx ->
+    // Install pre-init modules here
+
+    val server = MinecraftServer.init(Auth.Online())
+    val serverCx = cx.initialized(server)
+
+    // Pass serverCx to post-init modules here
+
+    server.start("0.0.0.0", 25565)
+    awaitCancellation()
+}
+```
+    </TabItem>
+    <TabItem label="Java">
+Create a TwaddleContext manually and wrap the process lifetime with `try`/`finally`.
+```java
+import net.minestom.server.Auth;
+import net.minestom.server.MinecraftServer;
+import org.everbuild.twaddle.core.TwaddleContext;
+import java.util.concurrent.CountDownLatch;
+
+void main() throws InterruptedException {
+    var cx = TwaddleContext.root();
+
+    try {
+        // Install pre-init modules here
+
+        var minecraftServer = MinecraftServer.init(new Auth.Online());
+        var serverCx = cx.initialized(minecraftServer);
+
+        // Pass serverCx to post-init modules here
+
+        minecraftServer.start("0.0.0.0", 25565);
+        new CountDownLatch(1).await();
+    } finally {
+        cx.shutdownNow();
+    }
+}
+```
+    </TabItem>
+</Tabs>
+
+The wait after `start(...)` is deliberate. Minestom starts its server threads and returns, while the Twaddle context must
+stay alive for as long as those threads do. Replace the indefinite wait with your application's shutdown signal when it
+has one.
+
+## Adopt optional capabilities
+
+Continue with [Inventory transfer rules](../modules/inventory-transfer/) for the first optional capability.
+
+:::caution[Experimental API]
+Lifecycle names, package boundaries, and module APIs may change while the framework is validated against real servers.
+:::

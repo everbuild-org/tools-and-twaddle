@@ -1,0 +1,154 @@
+---
+import { Icon } from "@astrojs/starlight/components";
+
+type Placement = "Foundation" | "Bridge" | "Module";
+type Maturity = "Experimental" | "Incubating" | "Supported";
+
+interface Props {
+    placement: Placement;
+    concern: string;
+    maturity: Maturity;
+}
+
+const { placement, concern, maturity } = Astro.props;
+---
+
+<aside class="classification" aria-label="Capability classification">
+    <dl>
+        <div title={`Placement: ${placement}`}>
+            <dt><Icon name="puzzle" label="Placement" /></dt>
+            <dd class="placement">{placement}</dd>
+        </div>
+        <div title={`Concern: ${concern}`}>
+            <dt><Icon name="setting" label="Concern" /></dt>
+            <dd class="concern">{concern}</dd>
+        </div>
+        <div title={`Maturity: ${maturity}`}>
+            <dt class="stoplight" aria-label="Maturity">
+                <span
+                    class:list={[
+                        "light",
+                        "red",
+                        { active: maturity === "Experimental" },
+                    ]}></span>
+                <span
+                    class:list={[
+                        "light",
+                        "amber",
+                        { active: maturity === "Incubating" },
+                    ]}></span>
+                <span
+                    class:list={[
+                        "light",
+                        "green",
+                        { active: maturity === "Supported" },
+                    ]}></span>
+            </dt>
+            <dd class:list={["maturity", maturity.toLowerCase()]}>
+                {maturity}
+            </dd>
+        </div>
+    </dl>
+</aside>
+
+<style>
+    .classification {
+        display: inline-flex;
+        max-width: 100%;
+        margin-block: 0.75rem 1.75rem;
+        border: 1px solid var(--px-line);
+        background: var(--px-panel);
+        box-shadow: 2px 2px 0
+            color-mix(in srgb, var(--px-line) 68%, transparent);
+        font-family: var(--sl-font-mono);
+    }
+
+    dl {
+        display: flex;
+        flex-wrap: wrap;
+        align-items: center;
+        margin: 0;
+    }
+
+    dl > div {
+        display: inline-flex;
+        align-items: center;
+        min-height: 2rem;
+        padding: 0.3rem 0.65rem;
+        margin-top: 0;
+    }
+
+    dl > div + div {
+        border-inline-start: 1px solid var(--px-line);
+    }
+
+    dt {
+        color: var(--sl-color-gray-3);
+        font-size: 0.82rem;
+        line-height: 1;
+    }
+
+    dd {
+        margin: 0;
+        font-size: 0.7rem;
+        font-weight: 900;
+        line-height: 1;
+    }
+
+    .placement {
+        color: var(--px-blue);
+    }
+
+    .concern,
+    .incubating {
+        color: var(--px-gold);
+    }
+
+    .experimental {
+        color: var(--px-orange);
+    }
+
+    .supported {
+        color: var(--px-green);
+    }
+
+    .stoplight {
+        display: inline-flex;
+        gap: 0.18rem;
+        border: 1px solid var(--px-line);
+        background: var(--px-ink);
+        padding: 0.2rem;
+    }
+
+    .light {
+        width: 0.42rem;
+        height: 0.42rem;
+        background: var(--px-line);
+        opacity: 0.45;
+    }
+
+    .light.active {
+        opacity: 1;
+    }
+
+    .red.active {
+        background: var(--px-orange);
+        box-shadow: 0 0 0.35rem var(--px-orange);
+    }
+
+    .amber.active {
+        background: var(--px-gold);
+        box-shadow: 0 0 0.35rem var(--px-gold);
+    }
+
+    .green.active {
+        background: var(--px-green);
+        box-shadow: 0 0 0.35rem var(--px-green);
+    }
+
+    @media (max-width: 30rem) {
+        dl > div {
+            padding-inline: 0.5rem;
+        }
+    }
+</style>

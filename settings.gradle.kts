@@ -5,20 +5,21 @@ dependencyResolutionManagement {
     }
 }
 
+enableFeaturePreview("TYPESAFE_PROJECT_ACCESSORS")
+
 plugins {
     id("org.gradle.toolchains.foojay-resolver-convention") version "1.0.0"
 }
 
 include(":twaddle-core")
-includeImmediateChildren("modules", "module")
+includeImmediateChildren("modules")
 include(":testserver")
 
-fun includeImmediateChildren(path: String, prefix: String) {
-    File(path).listFiles()?.forEach { file ->
-        if (file.isDirectory) {
-            include(":$path:${file.name}")
-        }
-    }
+fun includeImmediateChildren(path: String) {
+    File(path)
+        .listFiles()
+        ?.filter { it.isDirectory }
+        ?.forEach { file -> include(":$path:${file.name}") }
 }
 
 rootProject.name = "tools-and-twaddle"

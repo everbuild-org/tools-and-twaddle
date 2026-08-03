@@ -1,0 +1,42 @@
+---
+title: Minestom helpers
+description: Small interoperability helpers that keep Minestom APIs visible.
+---
+
+import Classification from '../../../components/Classification.astro';
+
+<Classification placement="Bridge" concern="Interop" maturity="Experimental" />
+
+## Event listeners
+
+The typed `listen` extension adds an event listener and returns the same `EventNode`, which keeps listener setup concise
+and chainable:
+
+```kotlin
+inventory.eventNode()
+    .listen { event: InventoryPreClickEvent ->
+        // Handle the event with its inferred concrete type.
+    }
+```
+
+The helper delegates directly to `EventNode.addListener`. It does not introduce a second event bus or change Minestom's
+event propagation model.
+
+## Play packet listeners
+
+The reified `setPlayListener` extension removes the class token from Kotlin packet-listener setup:
+
+```kotlin
+MinecraftServer.getPacketListenerManager()
+    .setPlayListener<ClientPlayerLoadedPacket> { packet, player ->
+        // Handle the packet with its concrete type.
+    }
+```
+
+This delegates to `PacketListenerManager.setPlayListener(Class, PacketPlayListenerConsumer)`. Like the Minestom method,
+it replaces the listener for that packet type; it does not add another listener alongside the existing one.
+
+:::caution[Not composable]
+Do note that this method brutally replaces the existing listener for the given packet type thus disabling any existing listeners and
+minestom functionality
+:::

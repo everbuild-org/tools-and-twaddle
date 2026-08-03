@@ -1,0 +1,123 @@
+---
+title: Inventory transfer rules
+description: Resolve conditional slot routing into ordered destination tiers.
+---
+
+import Classification from '../../../components/Classification.astro';
+import { Tabs, TabItem } from '@astrojs/starlight/components';
+
+<Classification placement="Module" concern="Gameplay policy" maturity="Experimental" />
+
+The inventory transfer module describes where an item may be routed during a shift-click transfer. The ruleset itself only
+resolves policy. Bind it to an inventory to obtain the Minestom-facing handler.
+
+## Define a ruleset
+
+Rules are evaluated from top to bottom. For each slot, the first matching rule that mentions it owns the decision:
+
+<Tabs syncKey="jvm-language">
+    <TabItem label="Kotlin">
+```kotlin
+val furnaceTransfers = transferRuleset {
+    blockAt(SLOT_OUTPUT) { region != TransferRegion.OPEN_INVENTORY }
+
+    routeTo(SLOT_FUEL) {
+        region != TransferRegion.OPEN_INVENTORY && item.material() == Material.COAL
+    }
+    blockAt(SLOT_FUEL) { region != TransferRegion.OPEN_INVENTORY }
+
+    routeTo(SLOT_INPUT) { region != TransferRegion.OPEN_INVENTORY }
+
+    vanillaBehaviour()
+}
+```
+    </TabItem>
+    <TabItem label="Java">
+```java
+var furnaceTransfers = TransferRuleset.builder()
+    .blockAt(SLOT_OUTPUT, transfer -> transfer.getRegion() != TransferRegion.OPEN_INVENTORY)
+    .routeTo(SLOT_FUEL, transfer -> transfer.getRegion() != TransferRegion.OPEN_INVENTORY
+            && transfer.getItem().material() != Material.COAL)
+    .blockAt(SLOT_FUEL, transfer -> transfer.getRegion() != TransferRegion.OPEN_INVENTORY)
+    .blockAt(SLOT_INPUT, transfer -> transfer.getRegion() != TransferRegion.OPEN_INVENTORY)
+    .vanillaBehaviour()
+    .build();
+```
+    </TabItem>
+</Tabs>
+
+This reads as:
+
+1. never shift-click into the output;
+2. prefer the fuel slot for coal;
+3. keep non-coal items out of the fuel slot;
+4. route everything else from the player to the input;
+5. fall back to vanilla container routing for slots that earlier rules did not claim.
+
+`vanillaBehaviour()` should normally be the last declaration. Items leaving the open inventory are routed through the
+player hotbar and then main inventory, both in vanilla reverse order and as one tier. Items leaving the player inventory
+scan the open inventory from its first slot to its last. Earlier rules still override this fallback through the normal
+first-match semantics.
+
+This generic fallback covers ordinary open inventories. Equipment, off-hand, and crafting-grid routing will require a
+handler bound directly to a player inventory and are not part of this function yet.
+
+## Resolution semantics
+
+`resolve(context)` returns a `List<List<Int>>`. The outer list is an ordered set of routing tiers; each inner list is
+the selector order for one matching `RouteTo` rule.
+
+- A matching `RouteTo` claims unclaimed slots and adds a non-empty tier.
+- A matching `BlockAt` claims slots without adding a tier.
+- A predicate that returns `false` claims nothing.
+- Claimed and duplicate slots never appear in later tiers.
+- Selector order is preserved.
+- Empty and fully blocked rulesets resolve to an empty list.
+
+The context currently exposes the transfer action, player, inventory, source slot, item, and source region. The only
+action currently defined is `SHIFT_CLICK`; regions distinguish the open inventory, player main inventory, and hotbar.
+
+## Slot selectors
+
+| Selector | Selection |
+| --- | --- |
+| `SingleSlot` | One slot index |
+| `SlotRange` | Inclusive Java-friendly range, first-to-last or last-to-first |
+| `SlotProgression` | Kotlin `IntProgression`, including direction and step |
+| `SlotList` | Explicit slot order |
+
+Kotlin DSL overloads accept a slot index, an `IntProgression`, a `List<Int>`, or a selector. Java callers can use
+`TransferRuleset.builder()` and the selector companion factories.
+
+## Bind to an inventory
+
+<Tabs syncKey="jvm-language">
+    <TabItem label="Kotlin">
+```kotlin
+class FurnaceInventory : Inventory(InventoryType.FURNACE, "Furnace") {
+    private val transfers = furnaceTransfers.bindTo(this)
+
+    override fun shiftClick(player: Player, slot: Int, button: Int): Boolean =
+        transfers.shiftClick(player, slot, button)
+}
+```
+    </TabItem>
+    <TabItem label="Java">
+```java
+public class JavaFurnaceContainer extends Inventory {
+    private final InventoryTransferHandler transferHandler = RULESET.bindTo(this);
+
+    public JavaFurnaceContainer() { super(InventoryType.FURNACE, "Furnace"); }
+
+    @Override
+    public boolean shiftClick(@NonNull Player player, int slot, int button) {
+        return transferHandler.shiftClick(player, slot, button);
+    }
+}
+```
+    </TabItem>
+</Tabs>
+
+The bound handler translates Minestom window slots into a `TransferContext`, applies the resolved routing tiers, and
+updates both the open and player inventories. Within each tier it merges compatible stacks before using empty slots.
+Any remainder continues into the next tier.

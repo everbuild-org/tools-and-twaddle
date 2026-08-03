@@ -1,16 +1,22 @@
 package buildsrc.convention
 
 import org.gradle.api.tasks.testing.logging.TestLogEvent
+import org.gradle.testing.jacoco.tasks.JacocoReport
 
 plugins {
     kotlin("jvm")
     id("de.infix.testBalloon")
+    jacoco
 }
 
 val libs = versionCatalogs.named("libs")
 
 kotlin {
     jvmToolchain(25)
+}
+
+jacoco {
+    toolVersion = "0.8.14"
 }
 
 dependencies {
@@ -24,6 +30,8 @@ dependencies {
 }
 
 tasks.withType<Test>().configureEach {
+    finalizedBy(tasks.named("jacocoTestReport"))
+
     useJUnitPlatform()
 
     testLogging {
@@ -32,5 +40,12 @@ tasks.withType<Test>().configureEach {
             TestLogEvent.PASSED,
             TestLogEvent.SKIPPED
         )
+    }
+}
+
+tasks.named<JacocoReport>("jacocoTestReport") {
+    reports {
+        xml.required = true
+        html.required = true
     }
 }
