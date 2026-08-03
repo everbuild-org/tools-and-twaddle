@@ -36,10 +36,8 @@ jobs:
       - name: Upload coverage to Codecov
         uses: codecov/codecov-action@v7
         with:
-          files: twaddle-core/build/reports/jacoco/test/jacocoTestReport.xml,modules/twaddle-transfer-rules/build/reports/jacoco/test/jacocoTestReport.xml
           flags: unit-tests
           fail_ci_if_error: true
-          disable_search: true
           use_oidc: true
 
   website:
