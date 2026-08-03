@@ -1,4 +1,4 @@
-package org.everbuild.trwaddle.inventory_transfer
+package org.everbuild.twaddle.inventory_transfer
 
 fun interface TransferPredicate {
     fun invoke(context: TransferContext): Boolean

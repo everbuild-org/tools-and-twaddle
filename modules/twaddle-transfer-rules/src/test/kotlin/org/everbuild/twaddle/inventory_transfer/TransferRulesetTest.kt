@@ -1,4 +1,4 @@
-package org.everbuild.trwaddle.inventory_transfer
+package org.everbuild.twaddle.inventory_transfer
 
 import de.infix.testBalloon.framework.core.testSuite
 import io.kotest.matchers.shouldBe

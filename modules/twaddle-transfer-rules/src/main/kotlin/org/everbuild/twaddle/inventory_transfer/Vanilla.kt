@@ -1,4 +1,4 @@
-package org.everbuild.trwaddle.inventory_transfer
+package org.everbuild.twaddle.inventory_transfer
 
 internal const val PLAYER_HOTBAR_FIRST_SLOT = 0
 internal const val PLAYER_HOTBAR_LAST_SLOT = 8

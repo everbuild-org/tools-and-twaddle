@@ -1,4 +1,4 @@
-package org.everbuild.trwaddle.inventory_transfer
+package org.everbuild.twaddle.inventory_transfer
 
 import net.minestom.server.entity.Player
 import net.minestom.server.inventory.Inventory

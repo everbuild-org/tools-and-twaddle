@@ -4,8 +4,8 @@ import net.minestom.server.entity.Player
 import net.minestom.server.inventory.Inventory
 import net.minestom.server.inventory.InventoryType
 import net.minestom.server.item.Material
-import org.everbuild.trwaddle.inventory_transfer.TransferRegion
-import org.everbuild.trwaddle.inventory_transfer.transferRuleset
+import org.everbuild.twaddle.inventory_transfer.TransferRegion
+import org.everbuild.twaddle.inventory_transfer.transferRuleset
 
 class FurnaceContainer : Inventory(InventoryType.FURNACE, "Furnace") {
     private val transfers = ruleset.bindTo(this)
