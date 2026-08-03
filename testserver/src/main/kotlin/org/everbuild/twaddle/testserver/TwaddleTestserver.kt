@@ -2,8 +2,6 @@ package org.everbuild.twaddle.testserver
 
 import net.minestom.server.Auth
 import net.minestom.server.MinecraftServer
-import kotlinx.coroutines.awaitCancellation
-import org.everbuild.twaddle.core.TwaddleContext
 import org.everbuild.twaddle.core.logging.field
 import org.everbuild.twaddle.core.logging.info
 import org.everbuild.twaddle.core.logging.logger

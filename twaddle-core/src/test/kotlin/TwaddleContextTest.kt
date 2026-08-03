@@ -84,14 +84,14 @@ val twaddleContextTests by testSuite("Twaddle context") {
     }
 }
 
-private suspend fun TwaddleContext.installDirect(
+private fun TwaddleContext.installDirect(
     resource: OwnedTestResource,
 ): TestApi {
     resource.owned = true
     return TestApi(own(resource))
 }
 
-private suspend fun TwaddleContext.preparePhased(
+private fun TwaddleContext.preparePhased(
     resource: OwnedTestResource,
 ): AfterInit<TestApi> = {
     resource.owned = true
@@ -115,7 +115,7 @@ private open class OwnedTestResource(
 }
 
 private class RecordingResource(
-    name: String,
+    private val name: String,
     private val events: MutableList<String>,
 ) : OwnedTestResource(name) {
     override fun close() {
@@ -123,5 +123,4 @@ private class RecordingResource(
         events += name
     }
 
-    private val name = name
 }
