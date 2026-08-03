@@ -46,3 +46,7 @@ sealed interface SlotSelector {
         fun list(slots: IntArray) = SlotList(slots)
     }
 }
+
+internal class ContextualSlotSelector(
+    val select: (TransferContext) -> IntProgression,
+) : SlotSelector

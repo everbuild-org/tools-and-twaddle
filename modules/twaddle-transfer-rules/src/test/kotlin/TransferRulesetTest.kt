@@ -2,6 +2,15 @@ package org.everbuild.trwaddle.inventory_transfer
 
 import de.infix.testBalloon.framework.core.testSuite
 import io.kotest.matchers.shouldBe
+import net.kyori.adventure.text.Component
+import net.minestom.server.MinecraftServer
+import net.minestom.server.component.DataComponents
+import net.minestom.server.entity.Player
+import net.minestom.server.inventory.Inventory
+import net.minestom.server.inventory.InventoryType
+import net.minestom.server.inventory.PlayerInventory
+import net.minestom.server.item.ItemStack
+import net.minestom.server.item.Material
 import org.mockito.kotlin.doReturn
 import org.mockito.kotlin.mock
 
@@ -147,6 +156,217 @@ val transferRulesetTests by testSuite("Transfer ruleset") {
 
         ruleset.resolve(transferContext()) shouldBe emptyList()
     }
+
+    test("Shift click moves a remainder through routing tiers in order") {
+        val fixture = transferFixture()
+        val cursor = ItemStack.of(Material.DIAMOND)
+        fixture.playerInventory.cursorItem = cursor
+        fixture.playerInventory.setItemStack(9, ItemStack.of(Material.STONE, 10))
+        fixture.inventory.setItemStack(0, ItemStack.of(Material.STONE, 60))
+        val ruleset = transferRuleset {
+            routeTo(0) {
+                region == TransferRegion.PLAYER_MAIN && sourceSlot == 9
+            }
+            routeTo(1) {
+                region == TransferRegion.PLAYER_MAIN && sourceSlot == 9
+            }
+        }
+
+        val handled = ruleset.bindTo(fixture.inventory).shiftClick(
+            fixture.player,
+            fixture.inventory.size + 9,
+            0,
+        )
+
+        handled shouldBe true
+        fixture.inventory.getItemStack(0) shouldBe ItemStack.of(Material.STONE, 64)
+        fixture.inventory.getItemStack(1) shouldBe ItemStack.of(Material.STONE, 6)
+        fixture.playerInventory.getItemStack(9) shouldBe ItemStack.AIR
+        fixture.playerInventory.cursorItem shouldBe cursor
+    }
+
+    test("Shift click routes an open inventory source into player inventory slots") {
+        val fixture = transferFixture()
+        fixture.inventory.setItemStack(0, ItemStack.of(Material.STONE, 5))
+        fixture.playerInventory.setItemStack(8, ItemStack.of(Material.STONE, 63))
+        val ruleset = transferRuleset {
+            routeTo(listOf(8, 9)) {
+                region == TransferRegion.OPEN_INVENTORY && sourceSlot == 0
+            }
+        }
+
+        val handled = ruleset.bindTo(fixture.inventory).shiftClick(fixture.player, 0, 0)
+
+        handled shouldBe true
+        fixture.inventory.getItemStack(0) shouldBe ItemStack.AIR
+        fixture.playerInventory.getItemStack(8) shouldBe ItemStack.of(Material.STONE, 64)
+        fixture.playerInventory.getItemStack(9) shouldBe ItemStack.of(Material.STONE, 4)
+    }
+
+    test("A routing tier merges into existing stacks before filling empty slots") {
+        val fixture = transferFixture()
+        fixture.playerInventory.setItemStack(9, ItemStack.of(Material.STONE, 10))
+        fixture.inventory.setItemStack(1, ItemStack.of(Material.STONE, 60))
+        val ruleset = transferRuleset {
+            routeTo(listOf(0, 1)) { true }
+        }
+
+        val handled = ruleset.bindTo(fixture.inventory).shiftClick(
+            fixture.player,
+            fixture.inventory.size + 9,
+            0,
+        )
+
+        handled shouldBe true
+        fixture.inventory.getItemStack(0) shouldBe ItemStack.of(Material.STONE, 6)
+        fixture.inventory.getItemStack(1) shouldBe ItemStack.of(Material.STONE, 64)
+        fixture.playerInventory.getItemStack(9) shouldBe ItemStack.AIR
+    }
+
+    test("Shift click distinguishes hotbar and main inventory source regions") {
+        val hotbarFixture = transferFixture()
+        hotbarFixture.playerInventory.setItemStack(3, ItemStack.of(Material.STONE))
+        val mainFixture = transferFixture()
+        mainFixture.playerInventory.setItemStack(10, ItemStack.of(Material.STONE))
+        val ruleset = transferRuleset {
+            routeTo(0) { region == TransferRegion.PLAYER_HOTBAR }
+            routeTo(1) { region == TransferRegion.PLAYER_MAIN }
+        }
+
+        ruleset.bindTo(hotbarFixture.inventory).shiftClick(
+            hotbarFixture.player,
+            hotbarFixture.inventory.size + 3,
+            0,
+        ) shouldBe true
+        ruleset.bindTo(mainFixture.inventory).shiftClick(
+            mainFixture.player,
+            mainFixture.inventory.size + 10,
+            0,
+        ) shouldBe true
+
+        hotbarFixture.inventory.getItemStack(0) shouldBe ItemStack.of(Material.STONE)
+        hotbarFixture.inventory.getItemStack(1) shouldBe ItemStack.AIR
+        mainFixture.inventory.getItemStack(0) shouldBe ItemStack.AIR
+        mainFixture.inventory.getItemStack(1) shouldBe ItemStack.of(Material.STONE)
+    }
+
+    test("Shift click leaves the source untouched when no destination accepts the item") {
+        val fixture = transferFixture()
+        val source = ItemStack.of(Material.STONE, 5)
+        fixture.playerInventory.setItemStack(9, source)
+        fixture.inventory.setItemStack(0, ItemStack.of(Material.STONE, 64))
+        val ruleset = transferRuleset {
+            routeTo(listOf(-1, 0, fixture.inventory.size)) { true }
+        }
+
+        val handled = ruleset.bindTo(fixture.inventory).shiftClick(
+            fixture.player,
+            fixture.inventory.size + 9,
+            0,
+        )
+
+        handled shouldBe false
+        fixture.playerInventory.getItemStack(9) shouldBe source
+        fixture.inventory.getItemStack(0) shouldBe ItemStack.of(Material.STONE, 64)
+    }
+
+    test("Vanilla behaviour treats hotbar and main as one reverse-order tier") {
+        val fixture = transferFixture()
+        fixture.inventory.setItemStack(0, ItemStack.of(Material.STONE, 10))
+        fixture.playerInventory.setItemStack(35, ItemStack.of(Material.STONE, 60))
+        val ruleset = transferRuleset {
+            vanillaBehaviour()
+        }
+
+        ruleset.bindTo(fixture.inventory).shiftClick(fixture.player, 0, 0) shouldBe true
+        fixture.inventory.getItemStack(0) shouldBe ItemStack.AIR
+        fixture.playerInventory.getItemStack(35) shouldBe ItemStack.of(Material.STONE, 64)
+        fixture.playerInventory.getItemStack(9) shouldBe ItemStack.of(Material.STONE, 6)
+        fixture.playerInventory.getItemStack(8) shouldBe ItemStack.AIR
+    }
+
+    test("Vanilla behaviour routes player items through the open inventory in ascending order") {
+        val fixture = transferFixture(InventoryType.FURNACE)
+        fixture.playerInventory.setItemStack(9, ItemStack.of(Material.STONE, 10))
+        fixture.inventory.setItemStack(1, ItemStack.of(Material.STONE, 60))
+        val ruleset = transferRuleset {
+            vanillaBehaviour()
+        }
+
+        ruleset.bindTo(fixture.inventory).shiftClick(
+            fixture.player,
+            fixture.inventory.size + 9,
+            0,
+        ) shouldBe true
+
+        fixture.playerInventory.getItemStack(9) shouldBe ItemStack.AIR
+        fixture.inventory.getItemStack(1) shouldBe ItemStack.of(Material.STONE, 64)
+        fixture.inventory.getItemStack(0) shouldBe ItemStack.of(Material.STONE, 6)
+        fixture.inventory.getItemStack(2) shouldBe ItemStack.AIR
+    }
+
+    test("Rules declared before vanilla behaviour override its fallback routing") {
+        val fixture = transferFixture(InventoryType.FURNACE)
+        fixture.playerInventory.setItemStack(9, ItemStack.of(Material.STONE))
+        val ruleset = transferRuleset {
+            routeTo(2) { region == TransferRegion.PLAYER_MAIN }
+            vanillaBehaviour()
+        }
+
+        ruleset.bindTo(fixture.inventory).shiftClick(
+            fixture.player,
+            fixture.inventory.size + 9,
+            0,
+        ) shouldBe true
+
+        fixture.inventory.getItemStack(2) shouldBe ItemStack.of(Material.STONE)
+        fixture.inventory.getItemStack(0) shouldBe ItemStack.AIR
+    }
+
+    test("Stacks with different components do not merge") {
+        val fixture = transferFixture(InventoryType.FURNACE)
+        val namedDiamonds = ItemStack.builder(Material.DIAMOND)
+            .amount(5)
+            .set(DataComponents.CUSTOM_NAME, Component.text("Named diamonds"))
+            .build()
+        fixture.playerInventory.setItemStack(9, namedDiamonds)
+        fixture.inventory.setItemStack(0, ItemStack.of(Material.DIAMOND, 60))
+        val ruleset = transferRuleset {
+            vanillaBehaviour()
+        }
+
+        ruleset.bindTo(fixture.inventory).shiftClick(
+            fixture.player,
+            fixture.inventory.size + 9,
+            0,
+        ) shouldBe true
+
+        fixture.playerInventory.getItemStack(9) shouldBe ItemStack.AIR
+        fixture.inventory.getItemStack(0) shouldBe ItemStack.of(Material.DIAMOND, 60)
+        fixture.inventory.getItemStack(1) shouldBe namedDiamonds
+    }
+
+    test("Custom maximum stack size leaves the correct remainder for the next slot") {
+        val fixture = transferFixture(InventoryType.FURNACE)
+        val customStack = ItemStack.builder(Material.DIAMOND)
+            .set(DataComponents.MAX_STACK_SIZE, 99)
+            .build()
+        fixture.playerInventory.setItemStack(9, customStack.withAmount(20))
+        fixture.inventory.setItemStack(0, customStack.withAmount(90))
+        val ruleset = transferRuleset {
+            vanillaBehaviour()
+        }
+
+        ruleset.bindTo(fixture.inventory).shiftClick(
+            fixture.player,
+            fixture.inventory.size + 9,
+            0,
+        ) shouldBe true
+
+        fixture.playerInventory.getItemStack(9) shouldBe ItemStack.AIR
+        fixture.inventory.getItemStack(0) shouldBe customStack.withAmount(99)
+        fixture.inventory.getItemStack(1) shouldBe customStack.withAmount(11)
+    }
 }
 
 private fun rulesetRoutingTo(selector: SlotSelector): TransferRuleset =
@@ -156,4 +376,24 @@ private fun rulesetRoutingTo(selector: SlotSelector): TransferRuleset =
 
 private fun transferContext(sourceSlot: Int = 0): TransferContext = mock {
     on { this.sourceSlot } doReturn sourceSlot
+}
+
+private data class TransferFixture(
+    val inventory: Inventory,
+    val playerInventory: PlayerInventory,
+    val player: Player,
+)
+
+private fun transferFixture(inventoryType: InventoryType = InventoryType.CHEST_1_ROW): TransferFixture {
+    if (MinecraftServer.process() == null) MinecraftServer.init()
+
+    val playerInventory = PlayerInventory()
+    val player = mock<Player> {
+        on { inventory } doReturn playerInventory
+    }
+    return TransferFixture(
+        inventory = Inventory(inventoryType, "Transfer test"),
+        playerInventory = playerInventory,
+        player = player,
+    )
 }

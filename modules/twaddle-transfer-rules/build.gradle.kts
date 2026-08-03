@@ -4,5 +4,6 @@ plugins {
 
 dependencies {
     implementation(libs.minestom)
+    implementation(projects.twaddleCore)
 }
 

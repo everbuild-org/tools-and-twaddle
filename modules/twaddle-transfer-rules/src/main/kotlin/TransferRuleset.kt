@@ -13,7 +13,7 @@ class TransferRuleset(
             if (!rule.onlyIf.invoke(context)) return@forEach
 
             val unclaimedSlots = rule.slots
-                .slotsInOrder()
+                .slotsInOrder(context)
                 .filter(claimedSlots::add)
                 .toList()
 
@@ -25,21 +25,21 @@ class TransferRuleset(
         return routingTiers
     }
 
-    @JvmName("install")
-    fun javaInstall(inventory: Inventory) {
-        inventory.activeTransferRuleset = this
-    }
+    fun bindTo(inventory: Inventory): InventoryTransferHandler =
+        InventoryTransferHandler.bind(inventory, this)
 
     class Builder {
         private val rules = mutableListOf<TransferRule>()
 
-        fun addRule(rule: TransferRule) {
+        fun addRule(rule: TransferRule): Builder {
             rules += rule
+            return this
         }
 
         @JvmOverloads
-        fun routeTo(slots: SlotSelector, onlyIf: TransferPredicate = TransferPredicate.ALWAYS) {
+        fun routeTo(slots: SlotSelector, onlyIf: TransferPredicate = TransferPredicate.ALWAYS): Builder {
             rules += TransferRule.RouteTo(slots, onlyIf)
+            return this
         }
 
         @JvmOverloads
@@ -49,8 +49,9 @@ class TransferRuleset(
         )
 
         @JvmOverloads
-        fun blockAt(slots: SlotSelector, onlyIf: TransferPredicate = TransferPredicate.ALWAYS) {
+        fun blockAt(slots: SlotSelector, onlyIf: TransferPredicate = TransferPredicate.ALWAYS): Builder {
             rules += TransferRule.BlockAt(slots, onlyIf)
+            return this
         }
 
         @JvmOverloads
@@ -58,6 +59,11 @@ class TransferRuleset(
             slots = SlotSelector.SingleSlot(slot),
             onlyIf = onlyIf
         )
+
+        fun vanillaBehaviour(): Builder {
+            rules.addAll(vanillaBehaviourRules)
+            return this
+        }
 
         fun build(): TransferRuleset = TransferRuleset(rules.toList())
     }
@@ -68,7 +74,7 @@ class TransferRuleset(
     }
 }
 
-private fun SlotSelector.slotsInOrder(): Sequence<Int> = when (this) {
+private fun SlotSelector.slotsInOrder(context: TransferContext): Sequence<Int> = when (this) {
     is SlotSelector.SingleSlot -> sequenceOf(slot)
     is SlotSelector.SlotRange -> when (order) {
         ChooseSlotOrder.FIRST_TO_LAST -> (startInclusive..endInclusive).asSequence()
@@ -76,4 +82,5 @@ private fun SlotSelector.slotsInOrder(): Sequence<Int> = when (this) {
     }
     is SlotSelector.SlotProgression -> progression.asSequence()
     is SlotSelector.SlotList -> slots.asSequence()
+    is ContextualSlotSelector -> select(context).asSequence()
 }
