@@ -1,0 +1,10 @@
+version: "1.0"
+linter: qodana-jvm-community
+profile:
+  name: qodana.recommended
+
+include:
+  - name: CheckDependencyLicenses
+
+exclude:
+  - name: UnusedSymbol

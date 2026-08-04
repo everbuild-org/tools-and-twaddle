@@ -1,4 +1,4 @@
-package org.everbuild.trwaddle.inventory_transfer
+package org.everbuild.twaddle.inventory_transfer
 
 /**
  * Rules are evaluated from first to last.

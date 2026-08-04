@@ -1,38 +1,26 @@
 package org.everbuild.twaddle.testserver
 
-import net.minestom.server.Auth
-import net.minestom.server.MinecraftServer
 import kotlinx.coroutines.awaitCancellation
 import net.kyori.adventure.text.Component
 import net.kyori.adventure.text.format.NamedTextColor
+import net.minestom.server.Auth
+import net.minestom.server.MinecraftServer
 import net.minestom.server.command.builder.Command
-import net.minestom.server.command.builder.arguments.Argument
 import net.minestom.server.command.builder.arguments.ArgumentLiteral
-import net.minestom.server.component.DataComponents
 import net.minestom.server.coordinate.Pos
-import net.minestom.server.entity.EquipmentSlot
 import net.minestom.server.entity.GameMode
 import net.minestom.server.entity.Player
 import net.minestom.server.event.player.AsyncPlayerConfigurationEvent
 import net.minestom.server.event.player.PlayerGameModeRequestEvent
-import net.minestom.server.event.player.PlayerSpawnEvent
 import net.minestom.server.event.server.ServerListPingEvent
 import net.minestom.server.instance.LightingChunk
 import net.minestom.server.instance.block.Block
-import net.minestom.server.item.ItemStack
-import net.minestom.server.item.Material
-import net.minestom.server.network.player.ResolvableProfile
 import net.minestom.server.ping.Status
-import net.minestom.server.utils.chunk.ChunkSupplier
-import org.everbuild.twaddle.core.TwaddleContext
-import org.everbuild.twaddle.core.TwaddleServerContext
 import org.everbuild.twaddle.core.logging.field
 import org.everbuild.twaddle.core.logging.info
 import org.everbuild.twaddle.core.logging.logger
 import org.everbuild.twaddle.core.minestom.listen
 import org.everbuild.twaddle.core.runTwaddleApplication
-import kotlin.time.Duration.Companion.seconds
-import kotlin.time.toJavaDuration
 
 val logger = logger()
 

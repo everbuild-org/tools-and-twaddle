@@ -4,9 +4,9 @@ import net.minestom.server.entity.Player;
 import net.minestom.server.inventory.Inventory;
 import net.minestom.server.inventory.InventoryType;
 import net.minestom.server.item.Material;
-import org.everbuild.trwaddle.inventory_transfer.InventoryTransferHandler;
-import org.everbuild.trwaddle.inventory_transfer.TransferRegion;
-import org.everbuild.trwaddle.inventory_transfer.TransferRuleset;
+import org.everbuild.twaddle.inventory_transfer.InventoryTransferHandler;
+import org.everbuild.twaddle.inventory_transfer.TransferRegion;
+import org.everbuild.twaddle.inventory_transfer.TransferRuleset;
 import org.jspecify.annotations.NonNull;
 
 public class JavaFurnaceContainer extends Inventory {

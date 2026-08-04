@@ -13,6 +13,9 @@ jobs:
   gradle:
     name: Gradle
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      id-token: write
 
     steps:
       - name: Check out repository
@@ -29,6 +32,13 @@ jobs:
 
       - name: Build and test
         run: ./gradlew build
+
+      - name: Upload coverage to Codecov
+        uses: codecov/codecov-action@v7
+        with:
+          flags: unit-tests
+          fail_ci_if_error: true
+          use_oidc: true
 
   website:
     name: Website
