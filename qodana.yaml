@@ -1,5 +1,7 @@
 version: "1.0"
 linter: qodana-jvm-community
+failThreshold: 0
+
 profile:
   name: qodana.recommended
 
