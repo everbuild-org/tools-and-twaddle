@@ -12,6 +12,7 @@ plugins {
 }
 
 include(":twaddle-core")
+includeImmediateChildren("common")
 includeImmediateChildren("modules")
 include(":testserver")
 

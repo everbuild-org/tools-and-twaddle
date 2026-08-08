@@ -13,6 +13,9 @@ val libs = versionCatalogs.named("libs")
 
 kotlin {
     jvmToolchain(25)
+    compilerOptions {
+        freeCompilerArgs.add("-Xcollection-literals")
+    }
 }
 
 jacoco {
@@ -27,6 +30,8 @@ dependencies {
     testRuntimeOnly(libs.findLibrary("junit-platform-launcher").get())
     testImplementation(libs.findLibrary("testballoon-lib").get())
     testImplementation(libs.findLibrary("testballoon-kotest").get())
+    testImplementation(libs.findLibrary("log4j-core").get())
+    testImplementation(libs.findLibrary("log4j-slf4j2-impl").get())
 }
 
 tasks.withType<Test>().configureEach {
