@@ -12,4 +12,17 @@ interface Rule<T : ActivityContext> {
         constructor(key: AdventureKey) : this(key.namespace(), key.value())
         constructor(@KeyPattern value: String) : this(AdventureKey.key(value))
     }
+
+    companion object {
+        internal class RuleImpl<T : ActivityContext>(override val key: Rule.Key<T>, val block: (T) -> RuleResult<T>) :
+            Rule<T> {
+            override fun evaluate(context: T): RuleResult<T> = block(context)
+        }
+
+        operator fun <T : ActivityContext> invoke(key: Key<T>, block: (T) -> RuleResult<T>): Rule<T> =
+            RuleImpl(key, block)
+
+        @JvmStatic
+        fun <T : ActivityContext> rule(key: Key<T>, block: (T) -> RuleResult<T>): Rule<T> = invoke(key, block)
+    }
 }
