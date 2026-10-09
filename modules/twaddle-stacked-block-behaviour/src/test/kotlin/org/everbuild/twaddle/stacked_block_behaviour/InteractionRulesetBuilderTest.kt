@@ -47,13 +47,16 @@ val InteractionRulesetBuilderTests by testSuite {
         val player = env.createPlayer(instance, Pos.ZERO)
         val looping = LoopingRuleChainApplicatorFactory()
 
+        val observedBlocks = mutableListOf<Block>()
         val applicator = RuleChain.build<InteractionActivityContext> {
-            record { it.block shouldBe Block.STONE }
+            record { observedBlocks += it.block }
             mutatePipeline(Block.DIAMOND_BLOCK)
-            record { it.block shouldBe Block.DIAMOND_BLOCK }
+            record { observedBlocks += it.block }
         }.createApplicator(looping)
 
         val result = applicator.apply(InteractionActivityContext.mock(instance, player))
+        observedBlocks shouldBe listOf(Block.STONE, Block.DIAMOND_BLOCK)
+        result.finalContext.block shouldBe Block.DIAMOND_BLOCK
         result.ruleResult shouldBe RuleResult.next()
     }
 }

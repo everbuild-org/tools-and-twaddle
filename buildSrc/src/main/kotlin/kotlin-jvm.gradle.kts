@@ -9,6 +9,9 @@ plugins {
     jacoco
 }
 
+group = "org.everbuild.twaddle"
+version = project.property("twaddle.version") as String
+
 val libs = versionCatalogs.named("libs")
 
 kotlin {

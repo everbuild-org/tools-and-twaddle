@@ -1,6 +1,7 @@
 package org.everbuild.twaddle.stacked_block_behaviour
 
 import net.kyori.adventure.key.KeyPattern
+import java.util.function.Function
 import net.kyori.adventure.key.Key as AdventureKey
 
 interface Rule<T : ActivityContext> {
@@ -22,7 +23,12 @@ interface Rule<T : ActivityContext> {
         operator fun <T : ActivityContext> invoke(key: Key<T>, block: (T) -> RuleResult<T>): Rule<T> =
             RuleImpl(key, block)
 
-        @JvmStatic
+        @JvmName("__kt_rule")
         fun <T : ActivityContext> rule(key: Key<T>, block: (T) -> RuleResult<T>): Rule<T> = invoke(key, block)
+
+        @JvmName("rule")
+        @JvmStatic
+        fun <T : ActivityContext> jvmRule(key: Key<T>, block: Function<T, RuleResult<T>>): Rule<T> =
+            invoke(key) { block.apply(it) }
     }
 }
