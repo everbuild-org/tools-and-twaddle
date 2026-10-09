@@ -6,7 +6,7 @@ plugins {
 description = "Implement block behaviour once, stack on top of each other, and have them all be executed"
 
 dependencies {
-    implementation(libs.minestom)
+    compileOnly(libs.minestom)
     implementation(projects.twaddleCore)
     implementation(projects.common.twaddleCommonBlock)
     testImplementation(projects.common.twaddleTesting)

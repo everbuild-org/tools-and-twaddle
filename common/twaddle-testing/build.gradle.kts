@@ -8,7 +8,7 @@ description = "Testing utils for Twaddle"
 dependencies {
     implementation(libs.testballoon.lib)
     implementation(libs.testballoon.kotest)
-    implementation(libs.minestom)
+    api(libs.minestom)
     api(libs.minestomTesting)
 }
 

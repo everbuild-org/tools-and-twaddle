@@ -6,7 +6,7 @@ plugins {
 description = "Inventory transfer rules for customizing shift-clicks"
 
 dependencies {
-    implementation(libs.minestom)
+    compileOnly(libs.minestom)
     implementation(projects.twaddleCore)
 }
 

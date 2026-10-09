@@ -3,8 +3,8 @@ plugins {
 }
 
 dependencies {
-    implementation(libs.slf4j)
-    implementation(libs.minestom)
+    compileOnly(libs.slf4j)
+    compileOnly(libs.minestom)
     implementation(libs.kotlinx.coroutines)
     runtimeOnly(libs.bundles.log4j.runtime)
 

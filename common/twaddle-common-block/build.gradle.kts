@@ -6,7 +6,7 @@ plugins {
 description = "Common block API for Twaddle"
 
 dependencies {
-    implementation(libs.minestom)
+    compileOnly(libs.minestom)
     implementation(projects.twaddleCore)
 }
 
