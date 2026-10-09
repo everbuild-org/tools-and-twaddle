@@ -11,6 +11,7 @@ import net.minestom.server.instance.block.BlockFace
 import net.minestom.server.instance.block.BlockHandler
 import org.everbuild.twaddle.core.test.envTest
 import org.everbuild.twaddle.stacked_block_behaviour.engine.loop.LoopingRuleChainApplicatorFactory
+import org.everbuild.twaddle.stacked_block_behaviour.ruleset.BlockRuleset
 import org.everbuild.twaddle.stacked_block_behaviour.type.InteractionActivityContext
 
 val RuleBlockHandlerTests by testSuite {

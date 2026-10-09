@@ -7,6 +7,7 @@ import io.kotest.matchers.shouldBe
 import net.kyori.adventure.key.Key
 import net.minestom.server.tag.TagHandler
 import org.everbuild.twaddle.stacked_block_behaviour.engine.loop.LoopingRuleChainApplicatorFactory
+import org.everbuild.twaddle.stacked_block_behaviour.ruleset.BlockRuleset
 import org.everbuild.twaddle.stacked_block_behaviour.type.InteractionActivityContext
 
 private class RecordingContext : ActivityContext {

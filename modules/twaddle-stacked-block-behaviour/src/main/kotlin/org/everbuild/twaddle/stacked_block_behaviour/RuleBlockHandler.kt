@@ -3,6 +3,7 @@ package org.everbuild.twaddle.stacked_block_behaviour
 import net.kyori.adventure.key.Key
 import net.minestom.server.instance.block.BlockHandler
 import org.everbuild.twaddle.stacked_block_behaviour.engine.RuleChainApplicatorFactory
+import org.everbuild.twaddle.stacked_block_behaviour.ruleset.BlockRuleset
 import org.everbuild.twaddle.stacked_block_behaviour.type.InteractionActivityContext
 
 class RuleBlockHandler(

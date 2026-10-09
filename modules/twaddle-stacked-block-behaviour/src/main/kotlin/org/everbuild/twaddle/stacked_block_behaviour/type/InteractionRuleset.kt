@@ -34,6 +34,10 @@ data class InteractionActivityContext(
         interaction.hand
     )
 
+    fun replaceBlock(replacement: Block) {
+        instance.setBlock(blockPosition, replacement)
+    }
+
     override fun tagHandler(): TagHandler = tagHandler
 
     companion object

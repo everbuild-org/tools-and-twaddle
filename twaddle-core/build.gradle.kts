@@ -6,7 +6,7 @@ plugins {
 description = "Shared utils & lifecycle management for Twaddle"
 
 dependencies {
-    implementation(libs.minestom)
-    implementation(libs.slf4j)
+    compileOnly(libs.minestom)
+    compileOnly(libs.slf4j)
     api(libs.kotlinx.coroutines)
 }
