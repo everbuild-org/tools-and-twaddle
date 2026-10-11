@@ -10,8 +10,8 @@ does**, and **how safe it is to adopt**.
 
 | Label | Meaning | Dependency expectation |
 | --- | --- | --- |
-| **Foundation** | Universal process or framework concern | Lives in `twaddle-core` |
-| **Bridge** | Small adaptation of a Minestom primitive | Lives in core only when broadly reused; otherwise beside its module |
+| **Foundation** | Universal process or framework concern | Lives in `twaddle-lifecycle` or `twaddle-structured-logging` |
+| **Bridge** | Small adaptation of a Minestom primitive | Lives in `twaddle-common-minestom` when broadly reused; otherwise beside its module |
 | **Module** | Optional server or gameplay capability | Separate Gradle module with its own API |
 
 Placement is about ownership, not importance. A large, essential gameplay system can still be a module.

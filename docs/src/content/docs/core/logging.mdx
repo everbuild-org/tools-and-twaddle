@@ -7,6 +7,8 @@ import Classification from '../../../components/Classification.astro';
 
 <Classification placement="Foundation" concern="Observability" maturity="Experimental" />
 
+Provided by `twaddle-structured-logging` (`implementation(projects.modules.twaddleStructuredLogging)`).
+
 The logging helpers build on SLF4J 2's event API. They do not select a logging backend; the application provides one at
 runtime.
 
@@ -15,9 +17,9 @@ runtime.
 Create a logger for the calling class and attach structured fields with the `field` infix function:
 
 ```kotlin
-import org.everbuild.twaddle.core.logging.field
-import org.everbuild.twaddle.core.logging.info
-import org.everbuild.twaddle.core.logging.logger
+import org.everbuild.twaddle.structured_logging.field
+import org.everbuild.twaddle.structured_logging.info
+import org.everbuild.twaddle.structured_logging.logger
 
 private val log = logger()
 

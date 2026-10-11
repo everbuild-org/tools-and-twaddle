@@ -54,6 +54,19 @@ Tools and twaddle is a good fit if you:
 It is probably not the right fit if you need a frozen API surface, broad ecosystem compatibility, or a drop-in
 replacement for established server platforms.
 
+## Foundation modules
+
+The former `twaddle-core` artifact is split into independently selectable modules:
+
+| Artifact | Kotlin/Java package | Responsibility |
+| --- | --- | --- |
+| `twaddle-lifecycle` | `org.everbuild.twaddle.lifecycle` | Application lifetime, coroutine ownership, and resource shutdown |
+| `twaddle-structured-logging` | `org.everbuild.twaddle.structured_logging` | SLF4J logger construction and structured fields |
+| `twaddle-common-minestom` | `org.everbuild.twaddle.common.minestom` | Event and packet listener helpers |
+
+Lifecycle uses structured logging internally and exposes its coroutine dependency. Structured logging exposes the
+SLF4J API; applications supply the logging backend. Common Minestom helpers have no dependency on lifecycle or logging.
+
 ## Rule stacking
 
 The rule-stacking API is available in two artifacts:

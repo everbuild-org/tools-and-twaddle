@@ -10,17 +10,27 @@ inventories, event nodes, and items directly.
 
 ```text
 application
-   ├─ depends on → twaddle-core
+   ├─ depends on → foundation modules
    ├─ depends on → selected feature modules
    └─ depends on → Minestom
 
 feature module
-   ├─ may depend on → twaddle-core
+   ├─ may depend on → foundation modules
    └─ integrates with → Minestom
 
-twaddle-core
+twaddle-lifecycle
+   ├─ uses → twaddle-structured-logging
+   └─ exposes → coroutine ownership and Minestom server contexts
+
+twaddle-structured-logging
+   └─ uses → SLF4J
+
+twaddle-common-minestom
    └─ extends → Minestom primitives
 ```
+
+The foundation consists of `twaddle-lifecycle`, `twaddle-structured-logging`, and `twaddle-common-minestom`.
+Applications select the capabilities they use; `twaddle-core` is no longer an artifact.
 
 The application is the composition root. It chooses modules and controls Minestom initialization. Modules should not
 need a central registry merely to exist.

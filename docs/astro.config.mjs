@@ -40,7 +40,7 @@ export default defineConfig({
 				{
 					label: 'Foundation',
 					items: [
-						{ label: 'Core runtime', slug: 'core/runtime' },
+						{ label: 'Lifecycle', slug: 'core/runtime' },
 						{ label: 'Structured logging', slug: 'core/logging' },
 						{ label: 'Minestom helpers', slug: 'core/minestom-helpers' },
 					],

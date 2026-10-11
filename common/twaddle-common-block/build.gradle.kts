@@ -7,6 +7,5 @@ description = "Common block API for Twaddle"
 
 dependencies {
     compileOnly(libs.minestom)
-    implementation(projects.twaddleCore)
 }
 
