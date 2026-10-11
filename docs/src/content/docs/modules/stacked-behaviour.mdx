@@ -12,9 +12,12 @@ Stacked behaviour separates **which rules apply** from **what triggers them**. D
 into activity chains, and have your event or callback adapter run the appropriate chain.
 It works independently of Twaddle's lifecycle API.
 
+First [configure the public Maven repository](../../getting-started/#configure-the-repository).
+The examples use version `0.1.0`; use the same release version for all Twaddle modules.
+
 ```kotlin title="build.gradle.kts"
 dependencies {
-    implementation(projects.modules.twaddleStackedBehaviour)
+    implementation("org.everbuild.twaddle:twaddle-stacked-behaviour:0.1.0")
 }
 ```
 

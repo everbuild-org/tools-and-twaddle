@@ -4,8 +4,10 @@ description: Try an independent feature or add lifecycle ownership to your Mines
 ---
 import { Tabs, TabItem } from '@astrojs/starlight/components';
 
-Publication coordinates are not stable yet. The dependency examples assume your server is a project in this repository
-and use its type-safe project accessors.
+Twaddle modules use the Maven group `org.everbuild.twaddle` and are published to the Asorda public repository.
+The examples below use `0.1.0`, the version configured in `gradle.properties`.
+Choose a published version from the [GitHub releases](https://github.com/everbuild-org/tools-and-twaddle/releases)
+and use it consistently across all Twaddle dependencies. A release tagged `v0.1.0` uses Maven version `0.1.0`.
 
 Start with an existing [Minestom](https://minestom.net) server. Choose one of the following two paths:
 - [Use an independent feature](#use-an-independent-feature)
@@ -13,13 +15,53 @@ Start with an existing [Minestom](https://minestom.net) server. Choose one of th
 
 Most features are independent of the server lifecycle.
 
+## Configure the repository
+
+Add Maven Central for external dependencies and Asorda Public for Twaddle modules:
+
+```kotlin title="build.gradle.kts"
+repositories {
+    mavenCentral()
+    maven {
+        name = "asordaPublic"
+        url = uri("https://mvn.everbuild.org/public")
+    }
+}
+```
+
+If your build manages repositories in `settings.gradle.kts`, place the same repository entries inside
+`dependencyResolutionManagement { repositories { ... } }` instead.
+Consumers do not need the publishing credentials or a local checkout of Twaddle.
+
+Use Java 25 and keep your server's Minestom dependency. Most Twaddle modules declare Minestom as `compileOnly`,
+so your application must supply it. This source version builds against `net.minestom:minestom:2026.07.12-26.2`.
+
+## Artifact coordinates
+
+All artifacts share the group `org.everbuild.twaddle` and the release version. Choose individual modules as needed;
+their published metadata resolves transitive dependencies.
+
+| Artifact ID | Purpose |
+| --- | --- |
+| `twaddle-lifecycle` | Application lifetime and coroutine ownership |
+| `twaddle-structured-logging` | Structured logging helpers |
+| `twaddle-common-minestom` | Minestom event and packet helpers |
+| `twaddle-common-block` | Shared block APIs |
+| `twaddle-stacked-behaviour` | Ordered rules across typed activities |
+| `twaddle-stacked-behaviour-block` | Stacked rules for Minestom block callbacks |
+| `twaddle-transfer-rules` | Inventory shift-click routing |
+| `twaddle-random-ticking` | Sampled block updates |
+| `twaddle-testing` | Testing utilities; use `testImplementation` |
+
+For example, testing utilities use `testImplementation("org.everbuild.twaddle:twaddle-testing:0.1.0")`.
+
 ## Use an independent feature
 
 This inventory reserves the last slot against incoming shift-clicks. Add only the transfer module:
 
 ```kotlin title="build.gradle.kts"
 dependencies {
-    implementation(projects.modules.twaddleTransferRules)
+    implementation("org.everbuild.twaddle:twaddle-transfer-rules:0.1.0")
 }
 ```
 
@@ -85,7 +127,7 @@ Add `twaddle-lifecycle` when your application needs resource and coroutine owner
 
 ```kotlin title="build.gradle.kts"
 dependencies {
-    implementation(projects.modules.twaddleLifecycle)
+    implementation("org.everbuild.twaddle:twaddle-lifecycle:0.1.0")
 }
 ```
 

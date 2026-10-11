@@ -7,7 +7,16 @@ import Classification from '../../../components/Classification.astro';
 
 <Classification placement="Foundation" concern="Runtime" maturity="Experimental" />
 
-Provided by `twaddle-lifecycle` (`implementation(projects.modules.twaddleLifecycle)`).
+Provided by `twaddle-lifecycle`.
+
+First [configure the public Maven repository](../../getting-started/#configure-the-repository).
+Use the same release version for all Twaddle modules.
+
+```kotlin title="build.gradle.kts"
+dependencies {
+    implementation("org.everbuild.twaddle:twaddle-lifecycle:0.1.0")
+}
+```
 
 `TwaddleContext` owns coroutine work, resources, and child lifetimes. A root context normally lives as long as the server
 application; child contexts can represent the lifetime of one module or feature.
