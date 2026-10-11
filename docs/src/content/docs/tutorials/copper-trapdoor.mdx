@@ -8,14 +8,17 @@ import { Tabs, TabItem } from '@astrojs/starlight/components';
 Start with a copper trapdoor that toggles on interaction. Then insert a rule that requires sneaking, without rewriting
 the toggle rule. This runs inside an existing Minestom server; lifecycle ownership is optional.
 
+First [configure the public Maven repository](../../getting-started/#configure-the-repository).
+The examples use version `0.1.0`; use the same release version for all Twaddle modules.
+
 ```kotlin title="build.gradle.kts"
 dependencies {
-    implementation(projects.modules.twaddleStackedBehaviourBlock)
+    implementation("org.everbuild.twaddle:twaddle-stacked-behaviour-block:0.1.0")
 }
 ```
 
 The block module includes the general `twaddle-stacked-behaviour` API. For other domains, depend on
-`projects.modules.twaddleStackedBehaviour` directly.
+`org.everbuild.twaddle:twaddle-stacked-behaviour:0.1.0` directly.
 
 ## Create a ruleset
 

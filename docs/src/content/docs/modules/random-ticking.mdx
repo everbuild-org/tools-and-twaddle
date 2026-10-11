@@ -11,11 +11,14 @@ import { Tabs, TabItem } from '@astrojs/starlight/components';
 `twaddle-random-ticking` samples blocks on instance ticks and calls handlers implementing `RandomTickHandler`.
 It exposes `twaddle-common-block` through an API dependency. Stacked behaviour is optional.
 
+First [configure the public Maven repository](../../getting-started/#configure-the-repository).
+The examples use version `0.1.0`; use the same release version for all Twaddle modules.
+
 ```kotlin title="build.gradle.kts"
 dependencies {
-    implementation(projects.modules.twaddleRandomTicking)
+    implementation("org.everbuild.twaddle:twaddle-random-ticking:0.1.0")
     // Add this when defining random ticks with stacked rules:
-    implementation(projects.modules.twaddleStackedBehaviourBlock)
+    implementation("org.everbuild.twaddle:twaddle-stacked-behaviour-block:0.1.0")
 }
 ```
 
