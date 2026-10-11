@@ -1,0 +1,139 @@
+---
+title: Random ticking
+description: Sample loaded block sections and dispatch random ticks to participating handlers.
+---
+
+import Classification from '../../../components/Classification.astro';
+import { Tabs, TabItem } from '@astrojs/starlight/components';
+
+<Classification placement="Module" concern="Gameplay policy" maturity="Experimental" />
+
+`twaddle-random-ticking` samples blocks on instance ticks and calls handlers implementing `RandomTickHandler`.
+It exposes `twaddle-common-block` through an API dependency. Stacked behaviour is optional.
+
+```kotlin title="build.gradle.kts"
+dependencies {
+    implementation(projects.modules.twaddleRandomTicking)
+    // Add this when defining random ticks with stacked rules:
+    implementation(projects.modules.twaddleStackedBehaviourBlock)
+}
+```
+
+## Enable sampling
+
+Attach one event node after Minestom initialization. Configure speed on each instance.
+
+<Tabs syncKey="jvm-language">
+<TabItem label="Kotlin">
+```kotlin
+import net.minestom.server.MinecraftServer
+import org.everbuild.twaddle.random_ticking.getRandomTickingEventNode
+import org.everbuild.twaddle.random_ticking.randomTickSpeed
+
+MinecraftServer.getGlobalEventHandler().addChild(getRandomTickingEventNode())
+instance.randomTickSpeed = 3
+```
+</TabItem>
+<TabItem label="Java">
+```java
+import net.minestom.server.MinecraftServer;
+import static org.everbuild.twaddle.random_ticking.RandomTickingKt.getRandomTickingEventNode;
+import static org.everbuild.twaddle.random_ticking.RandomTickingInstanceSettingsKt.getRANDOM_TICK_SPEED;
+
+MinecraftServer.getGlobalEventHandler().addChild(getRandomTickingEventNode());
+instance.setTag(getRANDOM_TICK_SPEED(), 3);
+```
+</TabItem>
+</Tabs>
+
+You can attach the node to an instance event handler instead to limit its scope. Avoid attaching overlapping nodes:
+each node runs its own sampling pass.
+
+Speed is samples per section per instance tick, defaulting to **3**. Set it to **0** to pause an instance.
+The Kotlin setter rejects negative values; negative values written directly to `RANDOM_TICK_SPEED` are treated as zero.
+
+## Define a stacked random tick
+
+This wheat rule stages a growth update and preserves the block's handler and other data:
+
+<Tabs syncKey="jvm-language">
+<TabItem label="Kotlin">
+```kotlin
+import net.minestom.server.instance.block.Block
+import org.everbuild.twaddle.stacked_behaviour.Rule
+import org.everbuild.twaddle.stacked_behaviour.RuleResult
+import org.everbuild.twaddle.stacked_behaviour_block.ruleset.BlockRuleset
+import org.everbuild.twaddle.stacked_behaviour_block.type.RandomTickActivityContext
+import org.everbuild.twaddle.stacked_behaviour_block.type.randomTick
+
+val GrowWheat = Rule<RandomTickActivityContext>("example:grow_wheat") { context ->
+    val age = context.block.getProperty("age")!!.toInt()
+    if (age < 7) {
+        context.replaceBlock(context.block.withProperty("age", (age + 1).toString()))
+    }
+    RuleResult.Next
+}
+val growth = BlockRuleset.build {
+    addBlock(Block.WHEAT) {
+        randomTick.append { install(GrowWheat) }
+    }
+}
+```
+
+</TabItem>
+<TabItem label="Java">
+```java
+import kotlin.Unit;
+import net.minestom.server.instance.block.Block;
+import org.everbuild.twaddle.stacked_behaviour.Rule;
+import org.everbuild.twaddle.stacked_behaviour.RuleResult;
+import org.everbuild.twaddle.stacked_behaviour_block.ruleset.BlockRuleset;
+import org.everbuild.twaddle.stacked_behaviour_block.type.RandomTickActivityContext;
+import static org.everbuild.twaddle.stacked_behaviour_block.type.RandomTickActivityKt.getRandomTickActivity;
+
+var growWheat = Rule.<RandomTickActivityContext>rule("example:grow_wheat", context -> {
+    int age = Integer.parseInt(context.getBlock().getProperty("age"));
+    if (age < 7) {
+        context.replaceBlock(context.getBlock().withProperty("age", Integer.toString(age + 1)));
+    }
+    return RuleResult.next();
+});
+var growth = BlockRuleset.build(editor -> editor.addBlock(Block.WHEAT, behaviour -> {
+    behaviour.activity(getRandomTickActivity()).append(chain -> {
+        chain.install(growWheat);
+        return Unit.INSTANCE;
+    });
+}));
+```
+</TabItem>
+</Tabs>
+
+Compile and [attach the generated handler](../block-behaviour/#attach-handlers) to placed wheat blocks. The factory
+creates a `RandomTickHandler` only when `RandomTickActivity` is present. `randomTick.clear()` keeps an empty contribution;
+`randomTick.omit()` removes random ticking support. Neither enables ordinary `isTickable()` ticking.
+
+The context's `block` is the sampled input. `replaceBlock(...)` sets `newBlock` without writing to the instance;
+later rules may inspect or replace that value. The handler returns the final context's `newBlock`:
+
+- `null` leaves the block unchanged, including for an empty chain;
+- a replacement is applied by the sampling node after the chain finishes;
+- `Cascade` carries another context through the chain, but does not itself request a world update;
+- `Consume` stops the chain and still returns any staged replacement.
+
+## Use your own handler
+
+A handler can implement both Minestom's `BlockHandler` and
+`org.everbuild.twaddle.common.block.tick.RandomTickHandler` directly. Attach it with `block.withHandler(handler)`.
+
+`onRandomTick(RandomTick)` receives the block, instance, and absolute `BlockVec` position. Return a replacement or null.
+Override `shouldRandomTick(block)` to skip callbacks for selected states; its default is true. This check happens after
+sampling and does not change sampling frequency. Stacked random tick handlers use that default.
+
+## Sampling rules
+
+Only chunks surrounded by all eight loaded neighbours participate. A lone loaded chunk receives no random ticks.
+The eligible chunk selection is refreshed when chunks load or unload.
+
+Each section receives the configured number of independent position samples. A block can be selected more than once
+in a tick. Samples without a participating handler, or rejected by `shouldRandomTick`, are skipped rather than retried.
+Returning the same block skips the world write. Loading chunks and attaching handlers remain the application's responsibility.

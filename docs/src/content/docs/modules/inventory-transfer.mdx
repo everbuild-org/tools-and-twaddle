@@ -11,6 +11,12 @@ import { Tabs, TabItem } from '@astrojs/starlight/components';
 The inventory transfer module describes where an item may be routed during a shift-click transfer. The ruleset itself only
 resolves policy. Bind it to an inventory to obtain the Minestom-facing handler.
 
+```kotlin title="build.gradle.kts"
+dependencies {
+    implementation(projects.modules.twaddleTransferRules)
+}
+```
+
 ## Define a ruleset
 
 Rules are evaluated from top to bottom. For each slot, the first matching rule that mentions it owns the decision:
@@ -18,6 +24,13 @@ Rules are evaluated from top to bottom. For each slot, the first matching rule t
 <Tabs syncKey="jvm-language">
     <TabItem label="Kotlin">
 ```kotlin
+import net.minestom.server.item.Material
+import org.everbuild.twaddle.inventory_transfer.*
+
+val SLOT_INPUT = 0
+val SLOT_FUEL = 1
+val SLOT_OUTPUT = 2
+
 val furnaceTransfers = transferRuleset {
     blockAt(SLOT_OUTPUT) { region != TransferRegion.OPEN_INVENTORY }
 
@@ -34,12 +47,17 @@ val furnaceTransfers = transferRuleset {
     </TabItem>
     <TabItem label="Java">
 ```java
+import net.minestom.server.item.Material;
+import org.everbuild.twaddle.inventory_transfer.TransferRegion;
+import org.everbuild.twaddle.inventory_transfer.TransferRuleset;
+
+final int SLOT_INPUT = 0, SLOT_FUEL = 1, SLOT_OUTPUT = 2;
 var furnaceTransfers = TransferRuleset.builder()
     .blockAt(SLOT_OUTPUT, transfer -> transfer.getRegion() != TransferRegion.OPEN_INVENTORY)
     .routeTo(SLOT_FUEL, transfer -> transfer.getRegion() != TransferRegion.OPEN_INVENTORY
-            && transfer.getItem().material() != Material.COAL)
+            && transfer.getItem().material() == Material.COAL)
     .blockAt(SLOT_FUEL, transfer -> transfer.getRegion() != TransferRegion.OPEN_INVENTORY)
-    .blockAt(SLOT_INPUT, transfer -> transfer.getRegion() != TransferRegion.OPEN_INVENTORY)
+    .routeTo(SLOT_INPUT, transfer -> transfer.getRegion() != TransferRegion.OPEN_INVENTORY)
     .vanillaBehaviour()
     .build();
 ```
@@ -54,8 +72,8 @@ This reads as:
 4. route everything else from the player to the input;
 5. fall back to vanilla container routing for slots that earlier rules did not claim.
 
-`vanillaBehaviour()` should normally be the last declaration. Items leaving the open inventory are routed through the
-player hotbar and then main inventory, both in vanilla reverse order and as one tier. Items leaving the player inventory
+`vanillaBehaviour()` should normally be the last declaration. The current fallback routes items leaving the open inventory
+through main inventory slots 9–35, then hotbar slots 8–0, as one tier. Items leaving the player inventory
 scan the open inventory from its first slot to its last. Earlier rules still override this fallback through the normal
 first-match semantics.
 
@@ -94,6 +112,10 @@ Kotlin DSL overloads accept a slot index, an `IntProgression`, a `List<Int>`, or
 <Tabs syncKey="jvm-language">
     <TabItem label="Kotlin">
 ```kotlin
+import net.minestom.server.entity.Player
+import net.minestom.server.inventory.Inventory
+import net.minestom.server.inventory.InventoryType
+
 class FurnaceInventory : Inventory(InventoryType.FURNACE, "Furnace") {
     private val transfers = furnaceTransfers.bindTo(this)
 
@@ -104,13 +126,22 @@ class FurnaceInventory : Inventory(InventoryType.FURNACE, "Furnace") {
     </TabItem>
     <TabItem label="Java">
 ```java
-public class JavaFurnaceContainer extends Inventory {
-    private final InventoryTransferHandler transferHandler = RULESET.bindTo(this);
+import net.minestom.server.entity.Player;
+import net.minestom.server.inventory.Inventory;
+import net.minestom.server.inventory.InventoryType;
+import org.everbuild.twaddle.inventory_transfer.InventoryTransferHandler;
+import org.everbuild.twaddle.inventory_transfer.TransferRuleset;
 
-    public JavaFurnaceContainer() { super(InventoryType.FURNACE, "Furnace"); }
+public class JavaFurnaceContainer extends Inventory {
+    private final InventoryTransferHandler transferHandler;
+
+    public JavaFurnaceContainer(TransferRuleset ruleset) {
+        super(InventoryType.FURNACE, "Furnace");
+        transferHandler = ruleset.bindTo(this);
+    }
 
     @Override
-    public boolean shiftClick(@NonNull Player player, int slot, int button) {
+    public boolean shiftClick(Player player, int slot, int button) {
         return transferHandler.shiftClick(player, slot, button);
     }
 }

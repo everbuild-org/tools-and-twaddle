@@ -1,15 +1,85 @@
 ---
 title: Getting started
-description: Add the foundation to a Minestom server and give its work an explicit lifetime.
+description: Try an independent feature or add lifecycle ownership to your Minestom server.
 ---
 import { Tabs, TabItem } from '@astrojs/starlight/components';
 
 Publication coordinates are not stable yet. The dependency examples assume your server is a project in this repository
 and use its type-safe project accessors.
 
-Also, make sure you understand [Minestom](https://minestom.net) before continuing as this guide won't cover it.
+Start with an existing [Minestom](https://minestom.net) server. Choose one of the following two paths:
+- [Use an independent feature](#use-an-independent-feature)
+- [Manage your server lifecycle](#manage-your-server-lifecycle)
 
-## Add the foundation
+Most features are independent of the server lifecycle.
+
+## Use an independent feature
+
+This inventory reserves the last slot against incoming shift-clicks. Add only the transfer module:
+
+```kotlin title="build.gradle.kts"
+dependencies {
+    implementation(projects.modules.twaddleTransferRules)
+}
+```
+
+<Tabs syncKey="jvm-language">
+<TabItem label="Kotlin">
+```kotlin
+import net.minestom.server.entity.Player
+import net.minestom.server.inventory.Inventory
+import net.minestom.server.inventory.InventoryType
+import org.everbuild.twaddle.inventory_transfer.TransferRegion
+import org.everbuild.twaddle.inventory_transfer.transferRuleset
+
+class RoutedChest : Inventory(InventoryType.CHEST_1_ROW, "Routed chest") {
+    private val transfers = transferRuleset {
+        blockAt(8) { region != TransferRegion.OPEN_INVENTORY }
+        vanillaBehaviour()
+    }.bindTo(this)
+
+    override fun shiftClick(player: Player, slot: Int, button: Int): Boolean =
+        transfers.shiftClick(player, slot, button)
+}
+
+// In an existing player command or event callback:
+player.openInventory(RoutedChest())
+```
+</TabItem>
+<TabItem label="Java">
+```java
+import net.minestom.server.entity.Player;
+import net.minestom.server.inventory.Inventory;
+import net.minestom.server.inventory.InventoryType;
+import org.everbuild.twaddle.inventory_transfer.InventoryTransferHandler;
+import org.everbuild.twaddle.inventory_transfer.TransferRegion;
+import org.everbuild.twaddle.inventory_transfer.TransferRuleset;
+
+class RoutedChest extends Inventory {
+    private final InventoryTransferHandler transfers = TransferRuleset.builder()
+        .blockAt(8, context -> context.getRegion() != TransferRegion.OPEN_INVENTORY)
+        .vanillaBehaviour()
+        .build().bindTo(this);
+
+    RoutedChest() { super(InventoryType.CHEST_1_ROW, "Routed chest"); }
+
+    @Override
+    public boolean shiftClick(Player player, int slot, int button) {
+        return transfers.shiftClick(player, slot, button);
+    }
+}
+
+// In an existing player command or event callback:
+player.openInventory(new RoutedChest());
+```
+</TabItem>
+</Tabs>
+
+This controls shift-click routing, not ordinary clicks. Continue with [Inventory transfer rules](../modules/inventory-transfer/)
+for conditional destinations, or try the [copper trapdoor tutorial](../tutorials/copper-trapdoor/) to create, modify,
+and register stacked block rules.
+
+## Manage your server lifecycle
 
 Add `twaddle-lifecycle` when your application needs resource and coroutine ownership. Feature modules declare their own dependencies.
 
@@ -19,7 +89,7 @@ dependencies {
 }
 ```
 
-The application lifecycle has four phases:
+Structure application setup in this order:
 
 1. Twaddle creates the root context.
 2. Pre-init modules are installed.
@@ -82,9 +152,14 @@ The wait after `start(...)` is deliberate. Minestom starts its server threads an
 stay alive for as long as those threads do. Replace the indefinite wait with your application's shutdown signal when it
 has one.
 
-## Adopt optional capabilities
+## Adopt other optional capabilities
 
-Continue with [Inventory transfer rules](../modules/inventory-transfer/) for the first optional capability.
+Choose the capabilities your server needs:
+
+- [Inventory transfer rules](../modules/inventory-transfer/) for shift-click routing.
+- [Stacked behaviour](../modules/stacked-behaviour/) for ordered rules across typed activities.
+- [Block behaviour](../modules/block-behaviour/) for Minestom block callbacks and configuration.
+- [Random ticking](../modules/random-ticking/) for sampled block updates.
 
 :::caution[Experimental API]
 Lifecycle names, package boundaries, and module APIs may change while the framework is validated against real servers.

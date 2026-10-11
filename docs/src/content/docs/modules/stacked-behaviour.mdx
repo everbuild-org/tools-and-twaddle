@@ -1,0 +1,307 @@
+---
+title: Stacked behaviour
+description: Define subjects, activities, and ordered rules, then connect them to your own event dispatch.
+---
+
+import Classification from '../../../components/Classification.astro';
+import { Tabs, TabItem } from '@astrojs/starlight/components';
+
+<Classification placement="Module" concern="Gameplay policy" maturity="Experimental" />
+
+Stacked behaviour separates **which rules apply** from **what triggers them**. Define reusable rules, arrange them
+into activity chains, and have your event or callback adapter run the appropriate chain.
+It works independently of Twaddle's lifecycle API.
+
+```kotlin title="build.gradle.kts"
+dependencies {
+    implementation(projects.modules.twaddleStackedBehaviour)
+}
+```
+
+For a concrete integration, see the [copper trapdoor tutorial](../../tutorials/copper-trapdoor/).
+The [block layer](../block-behaviour/) already supplies a domain, contexts, and callback adapters for Minestom blocks.
+
+## How the pieces fit
+
+| Piece | Responsibility |
+| --- | --- |
+| `StackedRuleset` | Maps subject IDs (`Key`) to behaviours; its domain type keeps unrelated APIs separate |
+| `Behaviour` | Holds the activities and configuration for one subject |
+| `ActivityKey<R, C>` | Identifies an operation in domain `R`, with context type `C` |
+| `ActivityContext` | Carries the input and invocation-local tags used by rules |
+| `Rule<C>` | Evaluates a context and chooses how execution continues |
+| `RuleChain<C>` | Stores rules in execution order for one activity |
+| Editors | Build new snapshots or modify existing definitions |
+| `RuleChainApplicator<C>` | Executes a chain and returns its result and final context |
+
+For example, two subjects can both support an “execute” activity but install different rules. One subject can also
+support several activities, each with its own context and chain. The caller chooses the subject and activity;
+the engine then visits that chain in order. Branching is expressed through rule results rather than child-node types.
+
+The setup flow is **domain → context and activity → rules → behaviour → ruleset → applicator**.
+The runtime flow is **callback → subject lookup → apply(context) → interpret the result**.
+
+## Define a domain and activity
+
+A domain is a `StackedRuleset` subtype. `R` refers to that subtype; `E` is the editor used when making snapshots.
+Start with the general `RulesetEditor`; a custom editor is only needed for domain-specific selection helpers.
+
+The following minimal domain processes text. The context implements `ActivityContext`, including Minestom's
+`tagHandler()` contract. Declare the activity token once and reuse it everywhere.
+
+<Tabs syncKey="jvm-language">
+<TabItem label="Kotlin">
+```kotlin
+import net.kyori.adventure.key.Key
+import net.minestom.server.tag.TagHandler
+import org.everbuild.twaddle.stacked_behaviour.*
+
+class TextRuleset(definitions: Map<Key, Behaviour<TextRuleset>>) :
+    StackedRuleset<TextRuleset, RulesetEditor<TextRuleset>>(definitions, ::RulesetEditor)
+
+data class TextContext(
+    val text: String,
+    val tags: TagHandler = TagHandler.newHandler(),
+) : ActivityContext {
+    override fun tagHandler(): TagHandler = tags
+}
+
+val Execute = ActivityKey<TextRuleset, TextContext>("example:execute")
+```
+</TabItem>
+<TabItem label="Java">
+```java
+import java.util.Map;
+import net.kyori.adventure.key.Key;
+import net.minestom.server.tag.TagHandler;
+import org.everbuild.twaddle.stacked_behaviour.*;
+
+class TextRuleset extends StackedRuleset<TextRuleset, RulesetEditor<TextRuleset>> {
+    TextRuleset(Map<Key, Behaviour<TextRuleset>> definitions) {
+        super(definitions, definitionsToEdit -> new RulesetEditor<>(definitionsToEdit));
+    }
+}
+
+record TextContext(String text, TagHandler tags) implements ActivityContext {
+    TextContext(String text) { this(text, TagHandler.newHandler()); }
+    @Override public TagHandler tagHandler() { return tags; }
+}
+
+class TextActivities {
+    static final ActivityKey<TextRuleset, TextContext> EXECUTE = new ActivityKey<>("example:execute");
+}
+```
+</TabItem>
+</Tabs>
+
+Activity keys use **object identity**. Two new tokens with the same ID are different activities; the ID is a diagnostic
+label. Rule keys instead compare by namespace and value. Their string constructors accept namespaced IDs directly.
+
+Create a fresh tag handler for each invocation. Rules can exchange temporary data through these tags; keep persistent
+subject state in your domain's storage. When replacing a context, preserve its tag handler if later rules need that data.
+
+## Build rules and attach them to a subject
+
+This chain trims the input, then handles nonempty text. The ruleset chooses the chain through the subject ID
+`example:message`. This ID is separate from the activity ID and the rule IDs.
+
+<Tabs syncKey="jvm-language">
+<TabItem label="Kotlin">
+```kotlin
+val Trim = Rule<TextContext>("example:trim") { context ->
+    RuleResult.cascade(context.copy(text = context.text.trim()))
+}
+val Handle = Rule<TextContext>("example:handle") { context ->
+    if (context.text.isEmpty()) RuleResult.Next else RuleResult.Consume
+}
+val subject = Key.key("example:message")
+val editor = RulesetEditor<TextRuleset>()
+editor.add(subject) {
+    activity(Execute).append { install(Trim, Handle) }
+}
+val ruleset = TextRuleset(editor.build().behaviours)
+```
+</TabItem>
+<TabItem label="Java">
+```java
+import kotlin.Unit;
+
+var trim = Rule.<TextContext>rule("example:trim", context ->
+    RuleResult.cascade(new TextContext(context.text().trim(), context.tags())));
+var handle = Rule.<TextContext>rule("example:handle", context ->
+    context.text().isEmpty() ? RuleResult.next() : RuleResult.consume());
+var subject = Key.key("example:message");
+var editor = new RulesetEditor<TextRuleset>(Map.of());
+editor.add(subject, behaviour -> {
+    behaviour.activity(TextActivities.EXECUTE).append(chain -> {
+        chain.install(trim, handle);
+        return Unit.INSTANCE;
+    });
+    return Unit.INSTANCE;
+});
+var ruleset = new TextRuleset(editor.build().getBehaviours());
+```
+</TabItem>
+</Tabs>
+
+Each editor's `build()` produces a snapshot. Here, the `TextRuleset` constructor wraps the general editor's definitions
+in the domain type. A domain can expose its own `build` and `modify` helpers to hide this wiring from callers.
+The general editor callbacks currently return Kotlin `Unit`; Java callbacks therefore return `Unit.INSTANCE`.
+
+Rules should contain the actual checks or actions your domain needs. Returning `Consume` alone records that the
+activity was handled; it does not perform an action on the caller's behalf.
+
+## Next, Consume, and Cascade
+
+| Kotlin | Java | Effect |
+| --- | --- | --- |
+| `RuleResult.Next` | `RuleResult.next()` | Run the next rule with the current context |
+| `RuleResult.Consume` | `RuleResult.consume()` | Stop the chain and report the activity as handled |
+| `RuleResult.cascade(context)` | `RuleResult.cascade(context)` | Run the next rule with the supplied context |
+
+In the example, `Trim` returns `Cascade`, so `Handle` sees the trimmed text. Empty text returns `Next`, allowing a
+later rule or caller fallback to handle it. Nonempty text returns `Consume`, skipping any later rules.
+
+`Cascade` replaces the context for the rest of this invocation. It does not restart the chain, select another subject,
+dispatch another activity, or automatically change external state. Actions and state changes belong to your rules or adapter.
+
+## Run a behaviour from your adapter
+
+Creating definitions does not register event listeners. Your adapter looks up the subject, creates an applicator for
+its activity, and supplies a context. Create and reuse applicators during adapter setup when the definitions are fixed.
+Here, applying the chain to padded text returns `Consume` and a final context containing `hello`.
+
+<Tabs syncKey="jvm-language">
+<TabItem label="Kotlin">
+```kotlin
+import org.everbuild.twaddle.stacked_behaviour.engine.loop.LoopingRuleChainApplicatorFactory
+
+val behaviour = ruleset[subject] ?: error("Unknown subject: $subject")
+val applicator = behaviour.createApplicator(Execute, LoopingRuleChainApplicatorFactory())
+val result = applicator.apply(TextContext("  hello  "))
+val handled = result.ruleResult == RuleResult.Consume
+val finalText = result.finalContext.text
+```
+</TabItem>
+<TabItem label="Java">
+```java
+import java.util.Objects;
+import org.everbuild.twaddle.stacked_behaviour.engine.loop.LoopingRuleChainApplicatorFactory;
+
+var behaviour = Objects.requireNonNull(ruleset.get(subject), "Unknown subject");
+var applicator = behaviour.createApplicator(TextActivities.EXECUTE, new LoopingRuleChainApplicatorFactory());
+var result = applicator.apply(new TextContext("  hello  "));
+boolean handled = result.getRuleResult().equals(RuleResult.<TextContext>consume());
+String finalText = result.getFinalContext().text();
+```
+</TabItem>
+</Tabs>
+
+Your adapter decides what “handled” means: for example, whether to suppress a fallback action. It also decides what to
+do when a subject is absent. A missing activity on an existing behaviour produces an empty applicator: it returns `Next`
+and the original context. An explicit empty chain executes the same way, but remains a contribution when combining rulesets.
+
+`RuleChainResult.ruleResult` is the last evaluated result, which can be `Cascade` if that was the last rule.
+`finalContext` includes all context replacements. Only `Consume` indicates that execution was handled.
+
+## Modify a snapshot
+
+Seed an editor from existing definitions, edit the selected behaviour, and build a new domain snapshot.
+This guard stops messages longer than 100 characters before trimming or handling them.
+
+<Tabs syncKey="jvm-language">
+<TabItem label="Kotlin">
+```kotlin
+val LimitLength = Rule<TextContext>("example:limit_length") {
+    if (it.text.length > 100) RuleResult.Consume else RuleResult.Next
+}
+val changes = RulesetEditor(ruleset.behaviours)
+changes.behaviours(subject) {
+    activity(Execute).before(Trim) { install(LimitLength) }
+}
+val modified = TextRuleset(changes.build().behaviours)
+```
+</TabItem>
+<TabItem label="Java">
+```java
+var limitLength = Rule.<TextContext>rule("example:limit_length", context ->
+    context.text().length() > 100 ? RuleResult.consume() : RuleResult.next());
+var changes = new RulesetEditor<TextRuleset>(ruleset.getBehaviours());
+changes.behaviours(new Key[] {subject}, behaviourEditor -> {
+    behaviourEditor.activity(TextActivities.EXECUTE).before(trim, chain -> {
+        chain.install(limitLength);
+        return Unit.INSTANCE;
+    });
+    return Unit.INSTANCE;
+});
+var modified = new TextRuleset(changes.build().getBehaviours());
+```
+</TabItem>
+</Tabs>
+
+The original ruleset and its applicators retain their definitions. Create new applicators from `modified` and replace
+the ones your adapter uses to activate the changes. Kotlin's general `ruleset.modify { ... }` also creates a snapshot;
+a domain can override it to preserve its concrete return type.
+
+## Chain edits
+
+| Operation | Effect |
+| --- | --- |
+| `append { install(a, b) }`, `prepend { install(a, b) }` | Add rules at the end or start |
+| `before(key) { ... }`, `after(key) { ... }` | Insert beside an existing rule |
+| `replace { ... }`, `replace(key) { ... }` | Replace the whole chain or one rule |
+| `remove(key)` | Remove one rule |
+| `clear()` | Contribute an explicit empty chain |
+| `omit()` | Remove the activity contribution |
+
+The table uses Kotlin syntax; Java uses the same methods with callbacks as above. Anchors accept rule keys or rules.
+`install` accepts varargs and preserves order. Missing anchors and duplicate rule keys fail without committing the edit.
+Merely opening an activity editor does not contribute a chain.
+
+## Selection and combination
+
+The general API uses `add`, `behaviours`, `remove`, and `retainOnly` with Adventure keys.
+
+Adding an existing subject or editing/removing a missing subject is an error. `retainOnly` ignores missing keys,
+keeps original order, and clears the ruleset when called with no arguments. Selection edits commit only if every edit succeeds.
+
+`StackedRuleset.combine(a, b)` combines different subjects and disjoint contributions on the same subject. Duplicate
+activities fail, including empty chains. Use `modify` to extend an existing chain instead.
+
+## Configuration and state
+
+A behaviour can also carry configuration, indexed by Java class. Configuration describes the subject; activity
+context tags carry temporary invocation data. The engine stores configuration but does not interpret it. Your adapter
+reads it when configuring domain-specific handlers or actions.
+
+<Tabs syncKey="jvm-language">
+<TabItem label="Kotlin">
+```kotlin
+data class TextOptions(val maximumLength: Int)
+val configured = behaviour.modify {
+    configuration(TextOptions::class.java, TextOptions(100))
+}
+val options = configured.configuration(TextOptions::class.java)
+val withoutOptions = configured.modify { removeConfiguration(TextOptions::class.java) }
+```
+</TabItem>
+<TabItem label="Java">
+```java
+record TextOptions(int maximumLength) {}
+var configured = behaviour.modify(behaviourEditor -> {
+    behaviourEditor.configuration(TextOptions.class, new TextOptions(100));
+    return Unit.INSTANCE;
+});
+var options = configured.configuration(TextOptions.class);
+var withoutOptions = configured.modify(behaviourEditor -> {
+    behaviourEditor.removeConfiguration(TextOptions.class);
+    return Unit.INSTANCE;
+});
+```
+</TabItem>
+</Tabs>
+
+Reading an absent configuration returns null; setting replaces its value; removing an absent entry has no effect.
+The Kotlin reified `configuration<TextOptions>()` extension is also available. Use immutable values: snapshots copy
+the configuration map, not the stored objects. Combining duplicate configuration classes fails, even for equal values.
+Generic type arguments do not distinguish entries.

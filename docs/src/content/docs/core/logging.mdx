@@ -42,6 +42,11 @@ Logger construction is also available as `loggerFor<T>()` and `logger(name)`.
 `LogField.field(key, value)`:
 
 ```java
+import org.everbuild.twaddle.structured_logging.LogField;
+import org.everbuild.twaddle.structured_logging.StructuredLog;
+import org.slf4j.LoggerFactory;
+
+var LOGGER = LoggerFactory.getLogger("example.server");
 StructuredLog.info(LOGGER, "Test server binding",
     LogField.field("auth", "online"),
     LogField.field("port", 25565)
