@@ -127,6 +127,24 @@ context to `apply`. Missing activities fall through. The block integration's `cr
 installation onto blocks and registration with Minestom remain the caller's responsibility. Custom activity dispatch
 belongs to the integration that owns that activity.
 
+## Random ticking
+
+`twaddle-random-ticking` exposes `twaddle-common-block` through an `api` dependency and dispatches random ticks to
+block handlers implementing `RandomTickHandler`.
+
+```kotlin
+import net.minestom.server.MinecraftServer
+import org.everbuild.twaddle.random_ticking.getRandomTickingEventNode
+import org.everbuild.twaddle.random_ticking.randomTickSpeed
+
+MinecraftServer.getGlobalEventHandler().addChild(getRandomTickingEventNode())
+// Configure each instance through its random tick speed tag:
+// instance.randomTickSpeed = 4
+```
+
+The default speed is 3 samples per section per instance tick. Only chunks with all eight neighbouring chunks loaded
+participate. A handler's non-null result replaces the sampled block; null leaves it unchanged.
+
 ## Contributing
 
 Feedback is most useful when it comes from concrete use cases. Bug reports, architectural criticism, API proposals, and
