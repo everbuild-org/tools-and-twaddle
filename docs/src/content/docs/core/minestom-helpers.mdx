@@ -7,7 +7,16 @@ import Classification from '../../../components/Classification.astro';
 
 <Classification placement="Bridge" concern="Interop" maturity="Experimental" />
 
-Provided by `twaddle-common-minestom` (`implementation(projects.common.twaddleCommonMinestom)`).
+Provided by `twaddle-common-minestom`.
+
+First [configure the public Maven repository](../../getting-started/#configure-the-repository).
+Use the same release version for all Twaddle modules.
+
+```kotlin title="build.gradle.kts"
+dependencies {
+    implementation("org.everbuild.twaddle:twaddle-common-minestom:0.1.0")
+}
+```
 
 ## Event listeners
 
