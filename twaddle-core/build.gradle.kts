@@ -9,4 +9,7 @@ dependencies {
     compileOnly(libs.minestom)
     compileOnly(libs.slf4j)
     api(libs.kotlinx.coroutines)
+
+    testImplementation(libs.minestom)
+    testImplementation(libs.slf4j)
 }

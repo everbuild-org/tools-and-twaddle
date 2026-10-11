@@ -19,7 +19,7 @@ include(":testserver")
 fun includeImmediateChildren(path: String) {
     File(path)
         .listFiles()
-        ?.filter { it.isDirectory }
+        ?.filter { it.isDirectory && File(it, "build.gradle.kts").isFile }
         ?.forEach { file -> include(":$path:${file.name}") }
 }
 
