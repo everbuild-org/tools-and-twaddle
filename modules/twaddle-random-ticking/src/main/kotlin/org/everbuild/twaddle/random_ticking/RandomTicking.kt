@@ -56,7 +56,7 @@ fun getRandomTickingEventNode(): EventNode<InstanceEvent> {
             innerChunkCache.remove(event.instance)
         }
         .addListener(InstanceTickEvent::class.java) { event ->
-            val speed = event.instance.getTag(RANDOM_TICK_SPEED)
+            val speed = event.instance.getTag(RANDOM_TICK_SPEED).coerceAtLeast(0)
             for (chunk in innerChunkCache.computeIfAbsent(event.instance, ::innerChunks)) {
                 val minChunkX = chunk.chunkX * 16
                 val minChunkZ = chunk.chunkZ * 16
