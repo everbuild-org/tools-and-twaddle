@@ -38,5 +38,10 @@ class BlockRulesetEditor @JvmOverloads constructor(
 
     fun removeBlocks(vararg blocks: Block) = remove(*blocks.map { it.key() }.toTypedArray())
 
+    fun retainOnly(vararg blocks: Block) = super.retainOnly(*blocks.map { it.key() }.toTypedArray())
+
+    /** Resolves an empty selection without choosing between the Key and Block varargs overloads. */
+    fun retainOnly() = super.retainOnly()
+
     override fun build(): BlockRuleset = BlockRuleset(super.build().behaviours)
 }

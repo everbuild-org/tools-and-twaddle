@@ -51,6 +51,21 @@ class BlockRulesetJavaTest {
     }
 
     @Test
+    void retainOnlyAcceptsKeysBlocksAndAnEmptySelectionFromJava() {
+        var original = BlockRuleset.build(editor -> {
+            editor.addBlock(Block.STONE, behaviour -> behaviour.activity(ACTIVITY).clear());
+            editor.addBlock(Block.DIRT, _ -> {});
+        });
+        var byBlock = original.modify(editor -> editor.retainOnly(Block.STONE, Block.STONE, Block.GOLD_BLOCK));
+        var byKey = original.modify(editor -> editor.retainOnly(Block.STONE.key()));
+        assertEquals(byKey.getBlocks(), byBlock.getBlocks());
+        assertEquals(1, byBlock.getBlocks().size());
+        assertSame(original.get(Block.STONE.key()), byBlock.get(Block.STONE.key()));
+        assertEquals(2, original.getBlocks().size());
+        assertTrue(original.modify(editor -> editor.retainOnly()).getBlocks().isEmpty());
+    }
+
+    @Test
     void concreteEditorCanAlsoBeConstructedAndBuiltFromJava() {
         var editor = new BlockRulesetEditor();
         var first = Key.key("test:first");

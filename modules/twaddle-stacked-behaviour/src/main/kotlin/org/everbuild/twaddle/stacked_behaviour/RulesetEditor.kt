@@ -30,5 +30,10 @@ open class RulesetEditor<R : StackedRuleset<R, *>>(
         keys.forEach(definitions::remove)
     }
 
+    /** Keeps only selected subjects in their existing order. Missing keys are ignored; no keys clears the ruleset. */
+    fun retainOnly(vararg keys: Key) {
+        definitions.keys.retainAll(keys.toSet())
+    }
+
     open fun build(): StackedRuleset<R, RulesetEditor<R>> = StackedRuleset.snapshot(definitions)
 }

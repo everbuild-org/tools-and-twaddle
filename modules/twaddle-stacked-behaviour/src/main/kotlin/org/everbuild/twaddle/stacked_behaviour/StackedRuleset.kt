@@ -13,6 +13,7 @@ open class StackedRuleset<R : StackedRuleset<R, *>, out E : RulesetEditor<R>> pr
 
     operator fun get(key: Key): Behaviour<R>? = behaviours[key]
 
+    @JvmSynthetic
     open fun modify(edit: E.() -> Unit): StackedRuleset<R, RulesetEditor<R>> =
         editorFactory(behaviours).apply(edit).build()
 
