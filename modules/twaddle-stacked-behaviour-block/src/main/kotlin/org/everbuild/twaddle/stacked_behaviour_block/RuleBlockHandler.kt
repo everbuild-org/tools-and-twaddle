@@ -27,7 +27,7 @@ open class RuleBlockHandler(
 
 fun interface BlockHandlerFactory<Target> {
     fun create(
-        blockKey: Key,
+        handlerKey: Key,
         definition: Behaviour<BlockRuleset>,
         ruleChainFactory: RuleChainApplicatorFactory,
     ): Target
@@ -35,11 +35,11 @@ fun interface BlockHandlerFactory<Target> {
 
 object RuleBlockHandlerFactory : BlockHandlerFactory<BlockHandler> {
     override fun create(
-        blockKey: Key,
+        handlerKey: Key,
         definition: Behaviour<BlockRuleset>,
         ruleChainFactory: RuleChainApplicatorFactory,
     ): RuleBlockHandler = RuleBlockHandler(
-        blockKey,
+        handlerKey,
         interaction = definition.createApplicator(InteractionActivity, ruleChainFactory)
     )
 }
