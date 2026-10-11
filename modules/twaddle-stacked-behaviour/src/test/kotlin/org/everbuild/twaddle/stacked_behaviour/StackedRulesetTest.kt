@@ -26,6 +26,48 @@ private fun increment(name: String, by: Int) = Rule<CountContext>(Rule.Key("test
 }
 
 val StackedRulesetTests by testSuite {
+    test("Configurations can be read replaced and removed without changing earlier snapshots") {
+        val editor = BehaviourEditor<TestRuleset>()
+        editor.configuration(String::class.java) shouldBe null
+        editor.configuration(String::class.java, "first")
+        editor.configuration(CharSequence::class.java, "declared type")
+        val original = editor.build()
+        editor.configuration(String::class.java, "second")
+        editor.configuration(String::class.java) shouldBe "second"
+        val replaced = editor.build()
+        editor.removeConfiguration(String::class.java)
+        editor.removeConfiguration(String::class.java)
+        editor.build().configuration(String::class.java) shouldBe null
+        original.configuration<String>() shouldBe "first"
+        original.configuration(CharSequence::class.java) shouldBe "declared type"
+        replaced.configuration(String::class.java) shouldBe "second"
+        val modified = original.modify {
+            configuration(String::class.java) shouldBe "first"
+            removeConfiguration(String::class.java)
+        }
+        modified.configuration(String::class.java) shouldBe null
+        original.configuration(String::class.java) shouldBe "first"
+    }
+
+    test("Rulesets combine disjoint configuration classes and reject repeated classes") {
+        val configured = StackedRuleset.build<TestRuleset> {
+            add(subject) { configuration(String::class.java, "message") }
+        }
+        val other = StackedRuleset.build<TestRuleset> {
+            add(subject) {
+                configuration(List::class.java, listOf("entry"))
+                activity(countActivity).append { install(increment("configured", 2)) }
+            }
+        }
+        val combined = StackedRuleset.combine(configured, other)[subject]!!
+        combined.configuration(String::class.java) shouldBe "message"
+        combined.configuration(List::class.java) shouldBe listOf("entry")
+        combined.createApplicator(countActivity, factory).apply(CountContext()).finalContext.count shouldBe 2
+        shouldThrow<IllegalArgumentException> { StackedRuleset.combine(configured, configured) }
+        val removed = configured.modify { behaviours(subject) { removeConfiguration(String::class.java) } }
+        StackedRuleset.combine(configured, removed)[subject]!!.configuration(String::class.java) shouldBe "message"
+    }
+
     test("Retaining subjects filters without reordering or changing their behaviours") {
         val second = Key.key("test:second")
         val third = Key.key("test:third")

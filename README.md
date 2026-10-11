@@ -135,6 +135,41 @@ var modified = ruleset.modify(editor -> {
 
 The Java `blocks` overloads take the callback first so the selected keys or blocks remain true varargs.
 
+Behaviours also hold immutable configuration values indexed by their exact Java class. Both behaviours and editors
+provide `configuration(type)` for reading. Editors provide `configuration(type, value)` for replacement and
+`removeConfiguration(type)` for removal. Values must be immutable; snapshots copy the configuration map, not arbitrary
+objects. Combining behaviours rejects repeated configuration classes, even when their values are equal.
+
+The block layer provides a Kotlin extension for block entity settings:
+
+```kotlin
+import org.everbuild.twaddle.stacked_behaviour_block.configuration.blockEntity
+
+val chestRules = BlockRuleset.build {
+    addBlock(Block.CHEST) {
+        blockEntity {
+            action = 1
+            tags += INVENTORY_TAG
+        }
+    }
+}
+```
+
+`blockEntity` edits the existing settings and snapshots the tag selection. The generated handler exposes these through
+Minestom's block entity action and tag methods. The tag selection controls what is sent to clients; actual per-block
+values must be stored on the placed block separately. Without configuration, the action is `-1` and the selection is empty.
+
+Java uses the generic API directly:
+
+```java
+behaviour.configuration(BlockEntityConfiguration.class,
+    new BlockEntityConfiguration((byte) 1, Set.of(INVENTORY_TAG)));
+```
+
+`BlockEntityConfiguration` lives in `org.everbuild.twaddle.stacked_behaviour_block.configuration`.
+Kotlin callers can import `org.everbuild.twaddle.stacked_behaviour.configuration` to read values using
+`behaviour.configuration<BlockEntityConfiguration>()`.
+
 An integration compiles a selected activity with `behaviour.createApplicator(activityKey, factory)` and supplies its
 context to `apply`. Missing activities fall through. The block integration's `createHandlers` selects `InteractionActivity`;
 installation onto blocks and registration with Minestom remain the caller's responsibility. Custom activity dispatch

@@ -3,16 +3,42 @@ package org.everbuild.twaddle.stacked_behaviour_block;
 import net.kyori.adventure.key.Key;
 import net.minestom.server.instance.block.Block;
 import net.minestom.server.tag.TagHandler;
+import net.minestom.server.tag.Tag;
+import java.util.Set;
 import org.everbuild.twaddle.stacked_behaviour.ActivityContext;
 import org.everbuild.twaddle.stacked_behaviour.ActivityKey;
 import org.everbuild.twaddle.stacked_behaviour_block.ruleset.BlockRuleset;
 import org.everbuild.twaddle.stacked_behaviour_block.ruleset.BlockRulesetEditor;
+import org.everbuild.twaddle.stacked_behaviour_block.configuration.BlockEntityConfiguration;
+import org.everbuild.twaddle.stacked_behaviour.engine.loop.LoopingRuleChainApplicatorFactory;
 import org.jspecify.annotations.NonNull;
 import org.junit.jupiter.api.Test;
 
 import static org.junit.jupiter.api.Assertions.*;
 
 class BlockRulesetJavaTest {
+    @Test
+    void configurationsCanBeSetReadAndRemovedFromJava() {
+        var tag = Tag.String("inventory");
+        var configuration = new BlockEntityConfiguration((byte) 1, Set.of(tag));
+        var original = BlockRuleset.build(editor -> editor.addBlock(Block.CHEST, behaviour -> {
+            assertNull(behaviour.configuration(BlockEntityConfiguration.class));
+            behaviour.configuration(BlockEntityConfiguration.class, configuration);
+            assertSame(configuration, behaviour.configuration(BlockEntityConfiguration.class));
+        }));
+        var definition = original.get(Block.CHEST.key());
+        assertSame(configuration, definition.configuration(BlockEntityConfiguration.class));
+        var handler = RuleBlockHandlerFactory.INSTANCE.create(
+            Block.CHEST.key(), definition, new LoopingRuleChainApplicatorFactory());
+        assertEquals((byte) 1, handler.getBlockEntityAction());
+        assertEquals(Set.of(tag), handler.getBlockEntityTags());
+        assertThrows(UnsupportedOperationException.class, () -> configuration.getTags().clear());
+        var removed = original.modify(editor -> editor.blocks(
+            behaviour -> behaviour.removeConfiguration(BlockEntityConfiguration.class), Block.CHEST));
+        assertNull(removed.get(Block.CHEST.key()).configuration(BlockEntityConfiguration.class));
+        assertSame(configuration, definition.configuration(BlockEntityConfiguration.class));
+    }
+
     private static final ActivityKey<BlockRuleset, Context> ACTIVITY = new ActivityKey<>("test:java");
 
     private static final class Context implements ActivityContext {
