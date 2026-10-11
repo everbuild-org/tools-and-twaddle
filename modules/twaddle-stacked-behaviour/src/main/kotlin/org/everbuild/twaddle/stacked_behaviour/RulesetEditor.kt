@@ -13,7 +13,7 @@ open class RulesetEditor<R : StackedRuleset<R, *>>(
     fun behaviours(vararg keys: Key, edit: BehaviourEditor<R>.() -> Unit) {
         val selected = keys.distinct()
         val updates = selected.associateWith { key ->
-            val editor = definitions[key]?.let { BehaviourEditor(it) } ?: BehaviourEditor<R>()
+            val editor = definitions[key]?.let { BehaviourEditor(it) } ?: BehaviourEditor()
             editor.apply(edit).build()
         }
         definitions.putAll(updates)
