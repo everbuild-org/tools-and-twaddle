@@ -54,7 +54,77 @@ Tools and twaddle is a good fit if you:
 It is probably not the right fit if you need a frozen API surface, broad ecosystem compatibility, or a drop-in
 replacement for established server platforms.
 
+## Rule stacking
+
+The rule-stacking API is available in two artifacts:
+
+- `twaddle-stacked-behaviour` provides activity contexts, rules, chains, the editing DSL, and the execution engine in
+  `org.everbuild.twaddle.stacked_behaviour`.
+- `twaddle-stacked-behaviour-block` provides block rulesets, interaction contexts, and block handlers in
+  `org.everbuild.twaddle.stacked_behaviour_block`. It exposes the general API through an `api` dependency.
+
+These replace `twaddle-stacked-block-behaviour` and its `org.everbuild.twaddle.stacked_block_behaviour` package.
+
+`StackedRuleset<R, E>` maps subject identifiers to immutable `Behaviour<R>` definitions. Each behaviour binds typed
+`ActivityKey<R, C>` tokens to rule chains for context `C`. `RulesetEditor` and `BehaviourEditor` provide the shared
+editing API; `BlockRulesetEditor` provides block selection as instance methods in the block package.
+
+```kotlin
+import net.minestom.server.instance.block.Block
+import org.everbuild.twaddle.stacked_behaviour.Rule
+import org.everbuild.twaddle.stacked_behaviour.RuleResult
+import org.everbuild.twaddle.stacked_behaviour_block.ruleset.BlockRuleset
+import org.everbuild.twaddle.stacked_behaviour_block.type.InteractionActivity
+
+val ruleset = BlockRuleset.build {
+    addBlock(Block.STONE) {
+        activity(InteractionActivity).replace {
+            install(Rule(Rule.Key("example:replace_stone")) { context ->
+                context.replaceBlock(Block.DIAMOND_BLOCK)
+                RuleResult.consume()
+            })
+        }
+    }
+}
+
+val modified = ruleset.modify {
+    blocks(Block.STONE) { activity(InteractionActivity).clear() }
+}
+```
+
+Every chain editing verb is available through `activity(key)`, including `append`, `prepend`, `before`, `after`,
+`replace`, and `remove`. `omit()` removes the activity contribution; `clear()` contributes an explicit empty chain.
+Combining rulesets permits different activities on the same subject and rejects overlapping activity contributions.
+
+Kotlin callers can import `org.everbuild.twaddle.stacked_behaviour_block.type.interact` to use
+`interact.append { ... }` as shorthand for `activity(InteractionActivity).append { ... }`.
+
+Declare activity keys once and reuse them: keys use identity equality, with their textual IDs serving as diagnostic
+labels. A key's ruleset parameter restricts its domain, and its context parameter determines which rules can be installed.
+For another domain, define a ruleset type such as `class ItemRuleset : StackedRuleset<ItemRuleset, RulesetEditor<ItemRuleset>>(emptyMap(), ::RulesetEditor)`, then use
+`StackedRuleset.build<ItemRuleset> { add(itemKey) { activity(itemActivity).append { /* install rules */ } } }`.
+
+Java callers use static `BlockRuleset.build` and `Consumer` callbacks with the concrete editor:
+
+```java
+var ruleset = BlockRuleset.build(editor -> {
+    editor.addBlock(Block.STONE, behaviour -> behaviour.activity(myActivity).clear());
+});
+var modified = ruleset.modify(editor -> {
+    editor.blocks(behaviour -> behaviour.activity(myActivity).omit(), Block.STONE);
+    editor.removeBlocks(Block.STONE);
+});
+```
+
+The Java `blocks` overloads take the callback first so the selected keys or blocks remain true varargs.
+
+An integration compiles a selected activity with `behaviour.createApplicator(activityKey, factory)` and supplies its
+context to `apply`. Missing activities fall through. The block integration's `createHandlers` selects `InteractionActivity`;
+installation onto blocks and registration with Minestom remain the caller's responsibility. Custom activity dispatch
+belongs to the integration that owns that activity.
+
 ## Contributing
+
 Feedback is most useful when it comes from concrete use cases. Bug reports, architectural criticism, API proposals, and
 small reference implementations are all valuable while the project direction is still flexible.
 

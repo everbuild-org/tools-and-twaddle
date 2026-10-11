@@ -1,0 +1,63 @@
+package org.everbuild.twaddle.stacked_behaviour_block
+
+import de.infix.testBalloon.framework.core.testSuite
+import io.kotest.matchers.shouldBe
+import net.minestom.server.coordinate.Pos
+import net.minestom.server.instance.block.Block
+import org.everbuild.twaddle.core.test.envTest
+import org.everbuild.twaddle.core.test.shouldBeCalledAtMost
+import org.everbuild.twaddle.stacked_behaviour.RuleChain
+import org.everbuild.twaddle.stacked_behaviour.RuleResult
+import org.everbuild.twaddle.stacked_behaviour.engine.loop.LoopingRuleChainApplicatorFactory
+import org.everbuild.twaddle.stacked_behaviour_block.mock.cancelSet
+import org.everbuild.twaddle.stacked_behaviour_block.mock.mock
+import org.everbuild.twaddle.stacked_behaviour_block.mock.mutatePipeline
+import org.everbuild.twaddle.stacked_behaviour_block.mock.record
+import org.everbuild.twaddle.stacked_behaviour_block.type.InteractionActivityContext
+
+val InteractionRulesetBuilderTests by testSuite {
+    envTest("Empty rulechain allows further processing") { env ->
+        val instance = env.createEmptyInstance()
+        val player = env.createPlayer(instance, Pos.ZERO)
+
+        val looping = LoopingRuleChainApplicatorFactory()
+
+        val applicator = RuleChain.build<InteractionActivityContext> {}.createApplicator(looping)
+        val result = applicator.apply(InteractionActivityContext.mock(instance, player))
+
+        result.ruleResult shouldBe RuleResult.next()
+    }
+
+    envTest("Cancelling Rulechain stops further processing") { env ->
+        val instance = env.createEmptyInstance()
+        val player = env.createPlayer(instance, Pos.ZERO)
+        val looping = LoopingRuleChainApplicatorFactory()
+        val callback = shouldBeCalledAtMost(0)
+
+        val applicator = RuleChain.build {
+            cancelSet()
+            record { callback() }
+        }.createApplicator(looping)
+
+        val result = applicator.apply(InteractionActivityContext.mock(instance, player))
+        result.ruleResult shouldBe RuleResult.consume()
+    }
+
+    envTest("Modification should persist to later pipeline stages") { env ->
+        val instance = env.createEmptyInstance()
+        val player = env.createPlayer(instance, Pos.ZERO)
+        val looping = LoopingRuleChainApplicatorFactory()
+
+        val observedBlocks = mutableListOf<Block>()
+        val applicator = RuleChain.build<InteractionActivityContext> {
+            record { observedBlocks += it.block }
+            mutatePipeline(Block.DIAMOND_BLOCK)
+            record { observedBlocks += it.block }
+        }.createApplicator(looping)
+
+        val result = applicator.apply(InteractionActivityContext.mock(instance, player))
+        observedBlocks shouldBe listOf(Block.STONE, Block.DIAMOND_BLOCK)
+        result.finalContext.block shouldBe Block.DIAMOND_BLOCK
+        result.ruleResult shouldBe RuleResult.next()
+    }
+}

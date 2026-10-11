@@ -8,5 +8,6 @@ description = "Inventory transfer rules for customizing shift-clicks"
 dependencies {
     compileOnly(libs.minestom)
     implementation(projects.twaddleCore)
+    testImplementation(libs.minestom)
 }
 
