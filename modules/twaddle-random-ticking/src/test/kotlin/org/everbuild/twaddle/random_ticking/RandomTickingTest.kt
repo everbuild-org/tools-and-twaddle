@@ -2,8 +2,12 @@ package org.everbuild.twaddle.random_ticking
 
 import de.infix.testBalloon.framework.core.testSuite
 import io.kotest.matchers.shouldBe
+import io.kotest.matchers.nulls.shouldNotBeNull
+import java.util.concurrent.LinkedBlockingQueue
+import java.util.concurrent.TimeUnit
 import net.kyori.adventure.key.Key
 import net.minestom.server.MinecraftServer
+import net.minestom.server.event.instance.InstanceChunkLoadEvent
 import net.minestom.server.event.instance.InstanceTickEvent
 import net.minestom.server.instance.block.Block
 import net.minestom.server.instance.block.BlockHandler
@@ -66,6 +70,20 @@ val RandomTickingTests by testSuite {
 
         val centerX = -2
         val centerZ = -3
+        val neighbourLoads = LinkedBlockingQueue<InstanceChunkLoadEvent>()
+        node.addListener(InstanceChunkLoadEvent::class.java) { event ->
+            if (event.instance === instance &&
+                event.chunk.chunkX == centerX + 1 && event.chunk.chunkZ == centerZ + 1
+            ) {
+                neighbourLoads.add(event)
+            }
+        }
+        fun loadMissingNeighbour() {
+            instance.loadChunk(centerX + 1, centerZ + 1).join()
+            // Minestom completes the load future before dispatching the cache-invalidating event.
+            neighbourLoads.poll(5, TimeUnit.SECONDS).shouldNotBeNull()
+        }
+
         for (dx in -1..1) {
             for (dz in -1..1) {
                 if (dx != 1 || dz != 1) instance.loadChunk(centerX + dx, centerZ + dz).join()
@@ -74,7 +92,7 @@ val RandomTickingTests by testSuite {
         node.call(InstanceTickEvent(instance, 50, 0))
         ticks.size shouldBe 0
 
-        instance.loadChunk(centerX + 1, centerZ + 1).join()
+        loadMissingNeighbour()
         node.call(InstanceTickEvent(instance, 100, 50))
         ticks.size shouldBe 2
         ticks.forEach { tick ->
@@ -95,7 +113,7 @@ val RandomTickingTests by testSuite {
         instance.unloadChunk(centerX + 1, centerZ + 1)
         node.call(InstanceTickEvent(instance, 250, 200))
         ticks.size shouldBe 6
-        instance.loadChunk(centerX + 1, centerZ + 1).join()
+        loadMissingNeighbour()
         node.call(InstanceTickEvent(instance, 300, 250))
         ticks.size shouldBe 10
     }
