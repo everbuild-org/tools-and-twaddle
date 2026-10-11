@@ -21,6 +21,10 @@ kotlin {
     }
 }
 
+java {
+    withSourcesJar()
+}
+
 jacoco {
     toolVersion = "0.8.15"
 }
