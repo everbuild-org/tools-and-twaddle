@@ -1,21 +1,123 @@
 name: Release
 
 on:
-  push:
-    tags:
-      - "**"
+  workflow_dispatch:
 
 permissions:
-  contents: read
+  contents: write
+
+concurrency:
+  group: release
+  cancel-in-progress: false
 
 jobs:
   release:
     name: Release
-    if: ${{ vars.RELEASES_ENABLED == 'true' }}
     runs-on: ubuntu-latest
 
     steps:
-      - name: Release is not configured
+      - name: Check out repository
+        uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+
+      - name: Read release version
+        id: version
+        shell: python
         run: |
-          echo "Configure the release steps before setting RELEASES_ENABLED to true."
-          exit 1
+          import os
+          import pathlib
+          import re
+
+          properties = pathlib.Path("gradle.properties").read_text()
+          versions = re.findall(r"^twaddle\.version\s*=\s*(\S+)\s*$", properties, re.MULTILINE)
+          if len(versions) != 1 or not re.fullmatch(r"[0-9]+\.[0-9]+\.[0-9]+(?:[-+][0-9A-Za-z.-]+)?", versions[0]):
+              raise SystemExit("Expected one valid twaddle.version in gradle.properties")
+          version = versions[0]
+          if version.endswith("-SNAPSHOT"):
+              raise SystemExit("Set a release version before running this workflow")
+          with open(os.environ["GITHUB_OUTPUT"], "a") as output:
+              output.write(f"version={version}\ntag=v{version}\n")
+
+      - name: Check release prerequisites
+        env:
+          RELEASE_TAG: ${{ steps.version.outputs.tag }}
+          MVN_TWADDLE_USER: ${{ secrets.MVN_TWADDLE_USER }}
+          MVN_TWADDLE_PASSWORD: ${{ secrets.MVN_TWADDLE_PASSWORD }}
+        run: |
+          test -n "$MVN_TWADDLE_USER" || { echo "Missing MVN_TWADDLE_USER secret"; exit 1; }
+          test -n "$MVN_TWADDLE_PASSWORD" || { echo "Missing MVN_TWADDLE_PASSWORD secret"; exit 1; }
+          if git show-ref --verify --quiet "refs/tags/$RELEASE_TAG"; then
+            echo "Tag $RELEASE_TAG already exists. Bump twaddle.version before releasing."
+            exit 1
+          fi
+
+      - name: Set up Java
+        uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: 25
+
+      - name: Set up Gradle
+        uses: gradle/actions/setup-gradle@v6
+
+      - name: Tag release and check out tag
+        env:
+          RELEASE_TAG: ${{ steps.version.outputs.tag }}
+        run: |
+          git tag "$RELEASE_TAG"
+          git checkout --detach "$RELEASE_TAG"
+
+      - name: Build and test release
+        run: ./gradlew build
+
+      - name: Push release tag
+        env:
+          RELEASE_TAG: ${{ steps.version.outputs.tag }}
+        run: git push origin "refs/tags/$RELEASE_TAG"
+
+      - name: Publish to Asorda Public Maven
+        env:
+          MVN_TWADDLE_USER: ${{ secrets.MVN_TWADDLE_USER }}
+          MVN_TWADDLE_PASSWORD: ${{ secrets.MVN_TWADDLE_PASSWORD }}
+        run: ./gradlew publishAllPublicationsToAsordaPublicRepository --no-configuration-cache
+
+      - name: Create GitHub release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+          RELEASE_TAG: ${{ steps.version.outputs.tag }}
+          RELEASE_VERSION: ${{ steps.version.outputs.version }}
+        run: |
+          cat > "$RUNNER_TEMP/release-notes.md" <<'EOF'
+          ## Getting started
+
+          Add the public Maven repository to your `build.gradle.kts` (or to
+          `dependencyResolutionManagement.repositories` in `settings.gradle.kts`):
+
+          ```kotlin
+          repositories {
+              maven {
+                  name = "asordaPublic"
+                  url = uri("https://mvn.everbuild.org/public")
+              }
+          }
+          ```
+
+          Add the modules you need, using this release's version:
+
+          ```kotlin
+          dependencies {
+              implementation("org.everbuild.twaddle:twaddle-lifecycle:RELEASE_VERSION")
+          }
+          ```
+
+          See the [Tools and twaddle documentation](https://twaddle.asorda.net)
+          for available modules and usage guides.
+          EOF
+          sed -i "s/RELEASE_VERSION/$RELEASE_VERSION/g" "$RUNNER_TEMP/release-notes.md"
+          gh release create "$RELEASE_TAG" \
+            --verify-tag \
+            --title "$RELEASE_TAG" \
+            --generate-notes \
+            --notes-file "$RUNNER_TEMP/release-notes.md"
