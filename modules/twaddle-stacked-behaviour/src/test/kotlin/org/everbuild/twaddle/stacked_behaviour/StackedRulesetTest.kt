@@ -26,6 +26,47 @@ private fun increment(name: String, by: Int) = Rule<CountContext>(Rule.Key("test
 }
 
 val StackedRulesetTests by testSuite {
+    test("Selections create missing subjects and preserve existing contributions across repeated edits") {
+        val other = Key.key("test:other")
+        val original = StackedRuleset.build<TestRuleset> {
+            behaviours(subject) {
+                configuration(String::class.java, "retained")
+                activity(countActivity).append { install(increment("first", 1)) }
+            }
+        }
+        val modified = original.modify {
+            behaviours(subject, other, subject) {
+                activity(countActivity).append { install(increment("shared", 2)) }
+            }
+            behaviours(other) { activity(countActivity).append { install(increment("last", 4)) } }
+        }
+        modified[subject]!!.configuration<String>() shouldBe "retained"
+        modified[subject]!!.createApplicator(countActivity, factory).apply(CountContext()).finalContext.count shouldBe 3
+        modified[other]!!.createApplicator(countActivity, factory).apply(CountContext()).finalContext.count shouldBe 6
+        original[subject]!!.createApplicator(countActivity, factory).apply(CountContext()).finalContext.count shouldBe 1
+        original[other] shouldBe null
+    }
+
+    test("A failed selection neither changes existing subjects nor creates missing subjects") {
+        val missing = Key.key("test:missing")
+        val failing = Key.key("test:failing")
+        val editor = RulesetEditor<TestRuleset>()
+        editor.behaviours(subject) {
+            activity(countActivity).append { install(increment("original", 1)) }
+        }
+        editor.behaviours(failing) { configuration(String::class.java, "fail") }
+        shouldThrow<IllegalArgumentException> {
+            editor.behaviours(subject, missing, failing) {
+                activity(countActivity).append { install(increment("new", 2)) }
+                require(configuration(String::class.java) != "fail")
+            }
+        }
+        val unchanged = editor.build()
+        unchanged[subject]!!.createApplicator(countActivity, factory).apply(CountContext()).finalContext.count shouldBe 1
+        unchanged[missing] shouldBe null
+        unchanged[failing]!!.activity(countActivity) shouldBe null
+    }
+
     test("Configurations can be read replaced and removed without changing earlier snapshots") {
         val editor = BehaviourEditor<TestRuleset>()
         editor.configuration(String::class.java) shouldBe null
@@ -51,10 +92,10 @@ val StackedRulesetTests by testSuite {
 
     test("Rulesets combine disjoint configuration classes and reject repeated classes") {
         val configured = StackedRuleset.build<TestRuleset> {
-            add(subject) { configuration(String::class.java, "message") }
+            behaviours(subject) { configuration(String::class.java, "message") }
         }
         val other = StackedRuleset.build<TestRuleset> {
-            add(subject) {
+            behaviours(subject) {
                 configuration(List::class.java, listOf("entry"))
                 activity(countActivity).append { install(increment("configured", 2)) }
             }
@@ -73,9 +114,9 @@ val StackedRulesetTests by testSuite {
         val third = Key.key("test:third")
         val missing = Key.key("test:missing")
         val original = StackedRuleset.build<TestRuleset> {
-            add(subject) { activity(countActivity).append { install(increment("count", 3)) } }
-            add(second) {}
-            add(third) { activity(messageActivity).clear() }
+            behaviours(subject) { activity(countActivity).append { install(increment("count", 3)) } }
+            behaviours(second) {}
+            behaviours(third) { activity(messageActivity).clear() }
         }
         val selected = original.modify { retainOnly(third, missing, subject, subject) }
         selected.behaviours.keys.toList() shouldBe listOf(subject, third)
@@ -89,7 +130,7 @@ val StackedRulesetTests by testSuite {
 
     test("One behaviour dispatches different typed activities and retains repeated edits") {
         val ruleset = StackedRuleset.build<TestRuleset> {
-            add(subject) {
+            behaviours(subject) {
                 activity(messageActivity).replace {
                     install(Rule(Rule.Key("test:uppercase")) { RuleResult.cascade(MessageContext(it.message.uppercase())) })
                 }
@@ -110,8 +151,8 @@ val StackedRulesetTests by testSuite {
     }
 
     test("Combining rulesets accepts different activities but rejects overlapping empty contributions") {
-        val messages = StackedRuleset.build<TestRuleset> { add(subject) { activity(messageActivity).clear() } }
-        val counts = StackedRuleset.build<TestRuleset> { add(subject) { activity(countActivity).append { install(increment("count", 4)) } } }
+        val messages = StackedRuleset.build<TestRuleset> { behaviours(subject) { activity(messageActivity).clear() } }
+        val counts = StackedRuleset.build<TestRuleset> { behaviours(subject) { activity(countActivity).append { install(increment("count", 4)) } } }
         val combined = StackedRuleset.combine(messages, counts)
         combined[subject]!!.activity(messageActivity)!!.let { factory.create(it).apply(MessageContext("same")) }.finalContext.message shouldBe "same"
         combined[subject]!!.createApplicator(countActivity, factory).apply(CountContext()).finalContext.count shouldBe 4
@@ -128,15 +169,13 @@ val StackedRulesetTests by testSuite {
         val missing = Key.key("test:missing")
         lateinit var retained: BehaviourEditor<TestRuleset>
         val original = StackedRuleset.build<TestRuleset> {
-            add(subject) { retained = this; activity(countActivity).append { install(increment("first", 1)) } }
-            add(other) { activity(countActivity).append { install(increment("second", 2)) } }
+            behaviours(subject) { retained = this; activity(countActivity).append { install(increment("first", 1)) } }
+            behaviours(other) { activity(countActivity).append { install(increment("second", 2)) } }
         }
         retained.activity(countActivity).clear()
         original[subject]!!.createApplicator(countActivity, factory).apply(CountContext()).finalContext.count shouldBe 1
         var edits = 0
         val modified = original.modify {
-            shouldThrow<IllegalArgumentException> { add(subject) {} }
-            shouldThrow<IllegalArgumentException> { behaviours(subject, missing) { activity(countActivity).clear() } }
             shouldThrow<IllegalArgumentException> { remove(subject, missing) }
             shouldThrow<IllegalArgumentException> {
                 behaviours(subject, other) {
@@ -156,7 +195,7 @@ val StackedRulesetTests by testSuite {
         val messages = ActivityKey<TestRuleset, MessageContext>("test:shared")
         val counts = ActivityKey<TestRuleset, CountContext>("test:shared")
         val ruleset = StackedRuleset.build<TestRuleset> {
-            add(subject) {
+            behaviours(subject) {
                 activity(messages).clear()
                 activity(counts).append { install(increment("count", 7)) }
             }

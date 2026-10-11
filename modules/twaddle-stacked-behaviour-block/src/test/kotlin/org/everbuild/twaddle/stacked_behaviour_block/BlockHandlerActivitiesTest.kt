@@ -32,7 +32,7 @@ val BlockHandlerActivitiesTests by testSuite {
         val position = Vec(4.0, 5.0, 6.0)
         val seen = mutableListOf<PlacementActivityContext>()
         val ruleset = BlockRuleset.build {
-            addBlock(Block.STONE) {
+            blocks(Block.STONE) {
                 place.append {
                     install(Rule(Rule.Key("test:place")) { seen += it; RuleResult.Next })
                 }
@@ -65,7 +65,7 @@ val BlockHandlerActivitiesTests by testSuite {
         placed.cursorX shouldBe 0.25f
         placed.cursorY shouldBe 0.5f
         placed.cursorZ shouldBe 0.75f
-        BlockRuleset.build { addBlock(Block.STONE) {} }.stoneHandler()
+        BlockRuleset.build { blocks(Block.STONE) {} }.stoneHandler()
             .onPlace(BlockHandler.Placement(Block.STONE, Block.DIRT, instance, position))
         seen.size shouldBe 2
     }
@@ -76,7 +76,7 @@ val BlockHandlerActivitiesTests by testSuite {
         val position = Vec(4.0, 5.0, 6.0)
         val seen = mutableListOf<DestroyActivityContext>()
         val ruleset = BlockRuleset.build {
-            addBlock(Block.STONE) {
+            blocks(Block.STONE) {
                 destroy.append {
                     install(Rule(Rule.Key("test:destroy")) { seen += it; RuleResult.Next })
                 }
@@ -94,7 +94,7 @@ val BlockHandlerActivitiesTests by testSuite {
         }
         seen.first().player shouldBe null
         seen.last().player shouldBe player
-        BlockRuleset.build { addBlock(Block.STONE) {} }.stoneHandler()
+        BlockRuleset.build { blocks(Block.STONE) {} }.stoneHandler()
             .onDestroy(BlockHandler.Destroy(Block.STONE, Block.AIR, instance, position))
         seen.size shouldBe 2
     }
@@ -106,7 +106,7 @@ val BlockHandlerActivitiesTests by testSuite {
         val seen = mutableListOf<TouchActivityContext>()
         var laterRuleRan = false
         val ruleset = BlockRuleset.build {
-            addBlock(Block.STONE) {
+            blocks(Block.STONE) {
                 touch.append {
                     install(
                         Rule(Rule.Key("test:touch")) { seen += it; RuleResult.Consume },
@@ -132,7 +132,7 @@ val BlockHandlerActivitiesTests by testSuite {
         val instance = env.createEmptyInstance()
         val position = Vec(2.0, 3.0, 4.0)
         val seen = mutableListOf<TickActivityContext>()
-        val absent = BlockRuleset.build { addBlock(Block.STONE) {} }
+        val absent = BlockRuleset.build { blocks(Block.STONE) {} }
         absent.stoneHandler().isTickable shouldBe false
         absent.stoneHandler().tick(BlockHandler.Tick(Block.STONE, instance, position))
 

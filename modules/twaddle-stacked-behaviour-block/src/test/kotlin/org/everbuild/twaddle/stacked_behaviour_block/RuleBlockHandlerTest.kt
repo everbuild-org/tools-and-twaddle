@@ -25,14 +25,14 @@ val RuleBlockHandlerTests by testSuite {
         val player = env.createPlayer(instance, Pos.ZERO)
         val customActivity = ActivityKey<BlockRuleset, InteractionActivityContext>("test:custom")
         val customRules = BlockRuleset.build {
-            addBlock(Block.STONE) {
+            blocks(Block.STONE) {
                 activity(customActivity).replace {
                     install(Rule(Rule.Key("test:custom_rule")) { RuleResult.consume() })
                 }
             }
         }
         val interactionRules = BlockRuleset.build {
-            addBlock(Block.STONE) {
+            blocks(Block.STONE) {
                 activity(InteractionActivity).replace {
                     install(Rule(Rule.Key("test:interaction_rule")) { RuleResult.consume() })
                 }
@@ -64,7 +64,7 @@ val RuleBlockHandlerTests by testSuite {
             val cursorPosition = Vec(0.25, 0.5, 0.75)
             val seen = mutableListOf<InteractionActivityContext>()
             val ruleset = BlockRuleset.build {
-                addBlock(Block.STONE) {
+                blocks(Block.STONE) {
                     interact.replace {
                         install(Rule(Rule.Key("test:outcome")) {
                             seen += it

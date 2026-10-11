@@ -25,7 +25,7 @@ val RandomTickRuleBlockHandlerTests by testSuite {
     envTest("Random tick contributions enable the interface independently of regular ticking") { env ->
         val instance = env.createEmptyInstance()
         val event = RandomTickHandler.RandomTick(Block.STONE, instance, BlockVec(1, 2, 3))
-        val absent = BlockRuleset.build { addBlock(Block.STONE) {} }
+        val absent = BlockRuleset.build { blocks(Block.STONE) {} }
         (absent.randomTickTestHandler() is RandomTickHandler) shouldBe false
 
         val configured = absent.modify {
@@ -63,7 +63,7 @@ val RandomTickRuleBlockHandlerTests by testSuite {
         val laterBlocks = mutableListOf<Block>()
         val clientTag = Tag.String("test:client_data")
         val ruleset = BlockRuleset.build {
-            addBlock(Block.STONE) {
+            blocks(Block.STONE) {
                 blockEntity {
                     action = 1
                     tags += clientTag

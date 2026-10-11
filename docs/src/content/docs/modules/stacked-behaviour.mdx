@@ -119,7 +119,7 @@ val Handle = Rule<TextContext>("example:handle") { context ->
 }
 val subject = Key.key("example:message")
 val editor = RulesetEditor<TextRuleset>()
-editor.add(subject) {
+editor.behaviours(subject) {
     activity(Execute).append { install(Trim, Handle) }
 }
 val ruleset = TextRuleset(editor.build().behaviours)
@@ -135,7 +135,7 @@ var handle = Rule.<TextContext>rule("example:handle", context ->
     context.text().isEmpty() ? RuleResult.next() : RuleResult.consume());
 var subject = Key.key("example:message");
 var editor = new RulesetEditor<TextRuleset>(Map.of());
-editor.add(subject, behaviour -> {
+editor.behaviours(new Key[] {subject}, behaviour -> {
     behaviour.activity(TextActivities.EXECUTE).append(chain -> {
         chain.install(trim, handle);
         return Unit.INSTANCE;
@@ -263,10 +263,15 @@ Merely opening an activity editor does not contribute a chain.
 
 ## Selection and combination
 
-The general API uses `add`, `behaviours`, `remove`, and `retainOnly` with Adventure keys.
+The general API uses `behaviours`, `remove`, and `retainOnly` with Adventure keys.
 
-Adding an existing subject or editing/removing a missing subject is an error. `retainOnly` ignores missing keys,
-keeps original order, and clears the ruleset when called with no arguments. Selection edits commit only if every edit succeeds.
+`behaviours` creates missing subjects and edits existing ones, preserving contributions not changed by the callback.
+Repeated declarations edit the same subject; duplicate selected keys are edited once. Removing a missing subject is an error.
+`retainOnly` ignores missing keys, keeps original order, and clears the ruleset when called with no arguments.
+Selection edits commit only if every edit succeeds, including when the selection mixes existing and missing subjects.
+
+When migrating from `add`, use `behaviours(key) { ... }`. In Java, pass a key array before the callback, as shown above.
+Creation and modification use the same semantics; applications that require a new or existing subject must check presence explicitly.
 
 `StackedRuleset.combine(a, b)` combines different subjects and disjoint contributions on the same subject. Duplicate
 activities fail, including empty chains. Use `modify` to extend an existing chain instead.

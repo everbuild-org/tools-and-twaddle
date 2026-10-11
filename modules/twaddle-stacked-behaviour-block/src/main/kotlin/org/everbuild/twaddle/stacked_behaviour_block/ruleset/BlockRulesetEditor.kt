@@ -10,16 +10,7 @@ import org.everbuild.twaddle.stacked_behaviour.RulesetEditor
 class BlockRulesetEditor @JvmOverloads constructor(
     definitions: Map<Key, Behaviour<BlockRuleset>> = emptyMap(),
 ) : RulesetEditor<BlockRuleset>(definitions) {
-    @JvmSynthetic
-    fun addBlock(key: Key, edit: BehaviourEditor<BlockRuleset>.() -> Unit) = add(key, edit)
-
-    @JvmSynthetic
-    fun addBlock(block: Block, edit: BehaviourEditor<BlockRuleset>.() -> Unit) = add(block.key(), edit)
-
-    fun addBlock(key: Key, edit: Consumer<BehaviourEditor<BlockRuleset>>) = addBlock(key) { edit.accept(this) }
-
-    fun addBlock(block: Block, edit: Consumer<BehaviourEditor<BlockRuleset>>) = addBlock(block) { edit.accept(this) }
-
+    /** Creates missing blocks or edits existing ones, committing only if every edit succeeds. */
     @JvmSynthetic
     fun blocks(vararg keys: Key, edit: BehaviourEditor<BlockRuleset>.() -> Unit) = behaviours(*keys, edit = edit)
 
