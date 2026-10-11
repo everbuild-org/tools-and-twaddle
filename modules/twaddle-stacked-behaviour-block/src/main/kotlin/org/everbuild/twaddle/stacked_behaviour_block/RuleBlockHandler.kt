@@ -11,16 +11,46 @@ import org.everbuild.twaddle.stacked_behaviour_block.ruleset.BlockRuleset
 import org.everbuild.twaddle.stacked_behaviour_block.configuration.BlockEntityConfiguration
 import org.everbuild.twaddle.stacked_behaviour_block.type.InteractionActivity
 import org.everbuild.twaddle.stacked_behaviour_block.type.InteractionActivityContext
+import org.everbuild.twaddle.stacked_behaviour_block.type.TickActivity
+import org.everbuild.twaddle.stacked_behaviour_block.type.TickActivityContext
+import org.everbuild.twaddle.stacked_behaviour_block.type.PlacementActivity
+import org.everbuild.twaddle.stacked_behaviour_block.type.PlacementActivityContext
+import org.everbuild.twaddle.stacked_behaviour_block.type.DestroyActivity
+import org.everbuild.twaddle.stacked_behaviour_block.type.DestroyActivityContext
+import org.everbuild.twaddle.stacked_behaviour_block.type.TouchActivity
+import org.everbuild.twaddle.stacked_behaviour_block.type.TouchActivityContext
 
 open class RuleBlockHandler @JvmOverloads constructor(
     private val key: Key,
     private val interaction: RuleChainApplicator<InteractionActivityContext>,
     private val blockEntity: BlockEntityConfiguration = BlockEntityConfiguration(),
+    private val ticking: RuleChainApplicator<TickActivityContext>? = null,
+    private val placement: RuleChainApplicator<PlacementActivityContext> = RuleChainApplicator.empty(),
+    private val destroy: RuleChainApplicator<DestroyActivityContext> = RuleChainApplicator.empty(),
+    private val touch: RuleChainApplicator<TouchActivityContext> = RuleChainApplicator.empty(),
 ) : BlockHandler {
     override fun getKey(): Key = key
 
     override fun getBlockEntityAction(): Byte = blockEntity.action
     override fun getBlockEntityTags(): Collection<Tag<*>> = blockEntity.tags
+
+    override fun isTickable(): Boolean = ticking != null
+
+    override fun tick(tick: BlockHandler.Tick) {
+        ticking?.apply(TickActivityContext(tick))
+    }
+
+    override fun onPlace(placement: BlockHandler.Placement) {
+        this.placement.apply(PlacementActivityContext(placement))
+    }
+
+    override fun onDestroy(destroy: BlockHandler.Destroy) {
+        this.destroy.apply(DestroyActivityContext(destroy))
+    }
+
+    override fun onTouch(touch: BlockHandler.Touch) {
+        this.touch.apply(TouchActivityContext(touch))
+    }
 
     override fun onInteract(interaction: BlockHandler.Interaction): Boolean {
         val result = this.interaction.apply(
@@ -48,6 +78,10 @@ object RuleBlockHandlerFactory : BlockHandlerFactory<BlockHandler> {
         handlerKey,
         interaction = definition.createApplicator(InteractionActivity, ruleChainFactory),
         blockEntity = definition.configuration(BlockEntityConfiguration::class.java) ?: BlockEntityConfiguration(),
+        ticking = definition.activity(TickActivity)?.let { ruleChainFactory.create(it) },
+        placement = definition.createApplicator(PlacementActivity, ruleChainFactory),
+        destroy = definition.createApplicator(DestroyActivity, ruleChainFactory),
+        touch = definition.createApplicator(TouchActivity, ruleChainFactory),
     )
 }
 
