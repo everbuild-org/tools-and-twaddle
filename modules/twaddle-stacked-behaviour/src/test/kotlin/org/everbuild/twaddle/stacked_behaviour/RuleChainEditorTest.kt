@@ -25,6 +25,21 @@ private fun RuleChain<RecordingContext>.executionOrder(): List<String> {
 }
 
 val RuleChainEditorTests by testSuite {
+    test("Batch installation preserves order and rejects duplicate batches without partial installation") {
+        val chain = RuleChain.build<RecordingContext> {
+            install()
+            install(recordingRule("first"), recordingRule("second"))
+            shouldThrow<IllegalArgumentException> {
+                install(recordingRule("third"), recordingRule("third"))
+            }
+            shouldThrow<IllegalArgumentException> {
+                install(recordingRule("third"), recordingRule("first"))
+            }
+            install(recordingRule("third"), recordingRule("fourth"))
+        }
+        chain.executionOrder() shouldBe listOf("first", "second", "third", "fourth")
+    }
+
     test("Chain edits execute in the requested order and target equivalent keys") {
         val a = recordingRule("a")
         val b = recordingRule("b")

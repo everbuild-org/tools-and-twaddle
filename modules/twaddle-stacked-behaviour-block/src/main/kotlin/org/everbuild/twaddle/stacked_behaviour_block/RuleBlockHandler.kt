@@ -2,6 +2,7 @@ package org.everbuild.twaddle.stacked_behaviour_block
 
 import net.kyori.adventure.key.Key
 import net.minestom.server.instance.block.BlockHandler
+import org.everbuild.twaddle.stacked_behaviour.Behaviour
 import org.everbuild.twaddle.stacked_behaviour.RuleChainApplicator
 import org.everbuild.twaddle.stacked_behaviour.RuleResult
 import org.everbuild.twaddle.stacked_behaviour.engine.RuleChainApplicatorFactory
@@ -23,8 +24,24 @@ open class RuleBlockHandler(
         return result.ruleResult !is RuleResult.Consume
     }
 }
-interface BlockHandlerFactory {
-    fun create(blockKey: Key): BlockHandler
+
+fun interface BlockHandlerFactory<Target> {
+    fun create(
+        blockKey: Key,
+        definition: Behaviour<BlockRuleset>,
+        ruleChainFactory: RuleChainApplicatorFactory,
+    ): Target
+}
+
+object RuleBlockHandlerFactory : BlockHandlerFactory<BlockHandler> {
+    override fun create(
+        blockKey: Key,
+        definition: Behaviour<BlockRuleset>,
+        ruleChainFactory: RuleChainApplicatorFactory,
+    ): RuleBlockHandler = RuleBlockHandler(
+        blockKey,
+        interaction = definition.createApplicator(InteractionActivity, ruleChainFactory)
+    )
 }
 
 /**
@@ -32,14 +49,11 @@ interface BlockHandlerFactory {
  *
  * Installation onto blocks and registration for persistence belong to the caller.
  */
-fun BlockRuleset.createHandlers(
-    factory: RuleChainApplicatorFactory,
+fun <T> BlockRuleset.createHandlers(
+    ruleChainFactory: RuleChainApplicatorFactory,
+    blockHandlerFactory: BlockHandlerFactory<T>,
     handlerKey: (blockKey: Key) -> Key,
-
-): Map<Key, RuleBlockHandler> =
+): Map<Key, T> =
     blocks.mapValues { (blockKey, behaviour) ->
-        RuleBlockHandler(
-            key = handlerKey(blockKey),
-            interaction = behaviour.createApplicator(InteractionActivity, factory),
-        )
+        blockHandlerFactory.create(handlerKey(blockKey), behaviour, ruleChainFactory)
     }
