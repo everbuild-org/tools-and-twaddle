@@ -21,6 +21,7 @@ data class RandomTickActivityContext(
     val instance: Instance,
     val blockPosition: BlockVec,
     val tagHandler: TagHandler = TagHandler.newHandler(),
+    var newBlock: Block? = null,
 ) : ActivityContext {
     constructor(randomTick: RandomTickHandler.RandomTick) : this(
         randomTick.block,
@@ -29,7 +30,7 @@ data class RandomTickActivityContext(
     )
 
     fun replaceBlock(replacement: Block) {
-        instance.setBlock(blockPosition, replacement)
+        newBlock = replacement
     }
 
     override fun tagHandler(): TagHandler = tagHandler
