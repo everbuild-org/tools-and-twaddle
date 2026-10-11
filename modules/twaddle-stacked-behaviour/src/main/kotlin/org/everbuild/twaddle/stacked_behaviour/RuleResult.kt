@@ -58,8 +58,6 @@ sealed interface RuleResult<out T : ActivityContext> {
          *
          * The new context only affects subsequent rule evaluation.
          * It does not modify the underlying world or activity state.
-         *
-         * @property newContext the context passed to later rules
          */
         @JvmStatic
         fun <T : ActivityContext> cascade(newContext: T): RuleResult<T> =
