@@ -13,7 +13,7 @@ inline fun <T> Chunk.withReadLock(block: () -> T): T {
     }
 }
 
-inline fun <T> Chunk.withWriteLockLock(block: () -> T): T {
+inline fun <T> Chunk.withWriteLock(block: () -> T): T {
     lockWriteLock()
     return try {
         block()

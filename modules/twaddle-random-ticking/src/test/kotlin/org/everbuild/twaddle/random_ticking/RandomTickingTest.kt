@@ -11,6 +11,44 @@ import org.everbuild.twaddle.common.block.tick.RandomTickHandler
 import org.everbuild.twaddle.core.test.envTest
 
 val RandomTickingTests by testSuite {
+    envTest("shouldRandomTick filters sampled blocks before invoking their handler") { env ->
+        val instance = env.createEmptyInstance()
+        val ticks = mutableListOf<RandomTickHandler.RandomTick>()
+        val handler = object : BlockHandler, RandomTickHandler {
+            override fun getKey(): Key = Key.key("test:conditional_random_tick")
+            override fun shouldRandomTick(block: Block): Boolean = block.key() == Block.STONE.key()
+            override fun onRandomTick(randomTick: RandomTickHandler.RandomTick): Block {
+                ticks += randomTick
+                return Block.GOLD_BLOCK
+            }
+        }
+        val allowedBlock = Block.STONE.withHandler(handler)
+        val rejectedBlock = Block.DIRT.withHandler(handler)
+        instance.setGenerator {
+            it.modifier().fillHeight(-64, -48, allowedBlock)
+            it.modifier().fillHeight(-48, -32, rejectedBlock)
+        }
+        instance.randomTickSpeed = 1
+        for (x in -1..1) {
+            for (z in -1..1) instance.loadChunk(x, z).join()
+        }
+
+        getRandomTickingEventNode().call(InstanceTickEvent(instance, 50, 0))
+
+        ticks.size shouldBe 1
+        val tick = ticks.single()
+        tick.block shouldBe allowedBlock
+        (tick.blockPosition.blockY() in -64 until -48) shouldBe true
+        instance.getBlock(tick.blockPosition) shouldBe Block.GOLD_BLOCK
+        for (x in 0 until 16) {
+            for (y in -48 until -32) {
+                for (z in 0 until 16) {
+                    instance.getBlock(x, y, z) shouldBe rejectedBlock
+                }
+            }
+        }
+    }
+
     envTest("Loaded neighbours enable ticking and chunk changes invalidate the cached selection") { env ->
         val instance = env.createEmptyInstance()
         val ticks = mutableListOf<RandomTickHandler.RandomTick>()
