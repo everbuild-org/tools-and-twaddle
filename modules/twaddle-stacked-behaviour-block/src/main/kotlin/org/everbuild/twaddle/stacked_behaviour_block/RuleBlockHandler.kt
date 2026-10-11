@@ -85,7 +85,7 @@ open class RandomTickRuleBlockHandler @JvmOverloads constructor(
 ), RandomTickHandler {
     override fun onRandomTick(randomTick: RandomTickHandler.RandomTick): Block? {
         val result = this.randomTick.apply(RandomTickActivityContext(randomTick))
-        return result.finalContext.block
+        return result.finalContext.newBlock
     }
 }
 
