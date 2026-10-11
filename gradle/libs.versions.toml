@@ -1,6 +1,6 @@
 [versions]
 minestom = "2026.10.07-26.2"
-kotlin = "2.4.0"
+kotlin = "2.4.21"
 log4j = "2.26.1"
 slf4j = "2.0.18"
 junit = "6.1.3"
