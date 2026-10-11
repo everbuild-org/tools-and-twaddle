@@ -1,0 +1,200 @@
+---
+title: "Stacked behavior: Copper trapdoor"
+description: Create copper trapdoor rules, modify their chain, and register handlers in Minestom.
+---
+
+import { Tabs, TabItem } from '@astrojs/starlight/components';
+
+Start with a copper trapdoor that toggles on interaction. Then insert a rule that requires sneaking, without rewriting
+the toggle rule. This runs inside an existing Minestom server; lifecycle ownership is optional.
+
+```kotlin title="build.gradle.kts"
+dependencies {
+    implementation(projects.modules.twaddleStackedBehaviourBlock)
+}
+```
+
+The block module includes the general `twaddle-stacked-behaviour` API. For other domains, depend on
+`projects.modules.twaddleStackedBehaviour` directly.
+
+## Create a ruleset
+
+A ruleset maps subjects to behaviours. Each behaviour binds activities to ordered rule chains.
+Here, the subject is a block ID and the activity is interaction.
+
+<Tabs syncKey="jvm-language">
+<TabItem label="Kotlin">
+```kotlin
+import net.minestom.server.instance.block.Block
+import org.everbuild.twaddle.stacked_behaviour.Rule
+import org.everbuild.twaddle.stacked_behaviour.RuleResult
+import org.everbuild.twaddle.stacked_behaviour_block.ruleset.BlockRuleset
+import org.everbuild.twaddle.stacked_behaviour_block.type.InteractionActivityContext
+import org.everbuild.twaddle.stacked_behaviour_block.type.interact
+
+val ToggleTrapdoor = Rule<InteractionActivityContext>("example:toggle_trapdoor") { context ->
+    val open = context.block.getProperty("open") == "true"
+    context.replaceBlock(context.block.withProperty("open", (!open).toString()))
+    RuleResult.Consume
+}
+val ruleset = BlockRuleset.build {
+    addBlock(Block.COPPER_TRAPDOOR) {
+        interact.append { install(ToggleTrapdoor) }
+    }
+}
+```
+</TabItem>
+<TabItem label="Java">
+```java
+import kotlin.Unit;
+import net.minestom.server.instance.block.Block;
+import org.everbuild.twaddle.stacked_behaviour.Rule;
+import org.everbuild.twaddle.stacked_behaviour.RuleResult;
+import org.everbuild.twaddle.stacked_behaviour_block.ruleset.BlockRuleset;
+import org.everbuild.twaddle.stacked_behaviour_block.type.InteractionActivityContext;
+import static org.everbuild.twaddle.stacked_behaviour_block.type.InteractionActivityKt.getInteractionActivity;
+
+var toggleTrapdoor = Rule.<InteractionActivityContext>rule("example:toggle_trapdoor", context -> {
+    boolean open = "true".equals(context.getBlock().getProperty("open"));
+    context.replaceBlock(context.getBlock().withProperty("open", Boolean.toString(!open)));
+    return RuleResult.consume();
+});
+var ruleset = BlockRuleset.build(editor -> editor.addBlock(Block.COPPER_TRAPDOOR, behaviour -> {
+    behaviour.activity(getInteractionActivity()).append(chain -> {
+        chain.install(toggleTrapdoor);
+        return Unit.INSTANCE;
+    });
+}));
+```
+</TabItem>
+</Tabs>
+
+Changing a property on the existing block preserves its handler and other data. `Consume` ends the chain and tells
+Minestom that interaction was handled, preventing normal item use afterward.
+
+Java ruleset callbacks accept `Consumer`; chain-edit callbacks currently return Kotlin's `Unit.INSTANCE`.
+
+## Modify existing rules
+
+Insert a guard before the toggle. `modify` returns a new ruleset; the original stays unchanged.
+
+<Tabs syncKey="jvm-language">
+<TabItem label="Kotlin">
+```kotlin
+val RequireSneaking = Rule<InteractionActivityContext>("example:require_sneaking") {
+    if (it.player.isSneaking) RuleResult.Next else RuleResult.Consume
+}
+val modified = ruleset.modify {
+    blocks(Block.COPPER_TRAPDOOR) {
+        interact.before(ToggleTrapdoor) { install(RequireSneaking) }
+    }
+}
+```
+</TabItem>
+<TabItem label="Java">
+```java
+var requireSneaking = Rule.<InteractionActivityContext>rule("example:require_sneaking", context ->
+    context.getPlayer().isSneaking() ? RuleResult.next() : RuleResult.consume());
+var modified = ruleset.modify(editor -> editor.blocks(behaviour -> {
+    behaviour.activity(getInteractionActivity()).before(toggleTrapdoor, chain -> {
+        chain.install(requireSneaking);
+        return Unit.INSTANCE;
+    });
+}, Block.COPPER_TRAPDOOR));
+```
+</TabItem>
+</Tabs>
+
+A sneaking player reaches the toggle via `Next`. Other players stop at the guard via `Consume`.
+
+## Register handlers
+
+After Minestom initialization, compile the **modified** ruleset. Register each handler by its ID before loading saved
+blocks that reference it, and attach the handler to new blocks. Here, `instance` is an existing instance.
+
+<Tabs syncKey="jvm-language">
+<TabItem label="Kotlin">
+```kotlin
+import net.kyori.adventure.key.Key
+import net.minestom.server.MinecraftServer
+import org.everbuild.twaddle.stacked_behaviour.engine.loop.LoopingRuleChainApplicatorFactory
+import org.everbuild.twaddle.stacked_behaviour_block.RuleBlockHandlerFactory
+import org.everbuild.twaddle.stacked_behaviour_block.createHandlers
+
+val handlers = modified.createHandlers(
+    LoopingRuleChainApplicatorFactory(), RuleBlockHandlerFactory,
+) { blockKey -> Key.key("example", blockKey.value()) }
+handlers.values.forEach { handler ->
+    MinecraftServer.getBlockManager().registerHandler(handler.key) { handler }
+}
+
+instance.loadChunk(0, 0).join()
+val trapdoor = Block.COPPER_TRAPDOOR.withHandler(handlers.getValue(Block.COPPER_TRAPDOOR.key()))
+instance.setBlock(0, 42, 0, trapdoor)
+```
+</TabItem>
+<TabItem label="Java">
+```java
+import net.kyori.adventure.key.Key;
+import net.minestom.server.MinecraftServer;
+import org.everbuild.twaddle.stacked_behaviour.engine.loop.LoopingRuleChainApplicatorFactory;
+import org.everbuild.twaddle.stacked_behaviour_block.RuleBlockHandlerFactory;
+import static org.everbuild.twaddle.stacked_behaviour_block.RuleBlockHandlerKt.createHandlers;
+
+var handlers = createHandlers(modified,
+    new LoopingRuleChainApplicatorFactory(), RuleBlockHandlerFactory.INSTANCE,
+    blockKey -> Key.key("example", blockKey.value()));
+handlers.values().forEach(handler ->
+    MinecraftServer.getBlockManager().registerHandler(handler.getKey(), () -> handler));
+
+instance.loadChunk(0, 0).join();
+var trapdoor = Block.COPPER_TRAPDOOR.withHandler(handlers.get(Block.COPPER_TRAPDOOR.key()));
+instance.setBlock(0, 42, 0, trapdoor);
+```
+</TabItem>
+</Tabs>
+
+Registration does not rewrite existing blocks. After another ruleset modification, compile and attach new handlers.
+
+## Change what later rules see
+
+See [rule results](../../modules/stacked-behaviour/#next-consume-and-cascade) for the general execution contract.
+
+`Cascade` changes what later rules see. For example, this rule presents the trapdoor as closed to the next rule,
+insert it before the toggle to always request opening it:
+
+<Tabs syncKey="jvm-language">
+<TabItem label="Kotlin">
+```kotlin
+val TreatAsClosed = Rule<InteractionActivityContext>("example:treat_as_closed") { context ->
+    RuleResult.cascade(context.copy(block = context.block.withProperty("open", "false")))
+}
+val alwaysOpen = modified.modify {
+    blocks(Block.COPPER_TRAPDOOR) {
+        interact.before(ToggleTrapdoor) { install(TreatAsClosed) }
+    }
+}
+```
+</TabItem>
+<TabItem label="Java">
+```java
+var treatAsClosed = Rule.<InteractionActivityContext>rule("example:treat_as_closed", context ->
+    RuleResult.cascade(context.copy(
+        context.getBlock().withProperty("open", "false"), context.getInstance(), context.getBlockFace(),
+        context.getBlockPosition(), context.getCursorPosition(), context.getPlayer(), context.getHand(),
+        context.getTagHandler())));
+var alwaysOpen = modified.modify(editor -> editor.blocks(behaviour -> {
+    behaviour.activity(getInteractionActivity()).before(toggleTrapdoor, chain -> {
+        chain.install(treatAsClosed);
+        return Unit.INSTANCE;
+    });
+}, Block.COPPER_TRAPDOOR));
+```
+</TabItem>
+</Tabs>
+
+Cascading alone does not change the world or dispatch another activity. A later rule must request the world change.
+The applicator returns `ruleResult` and `finalContext`. Missing activities fall through with `Next`.
+
+
+Continue with [Stacked behaviour](../../modules/stacked-behaviour/) for domains, activities, chain editing, and configuration.

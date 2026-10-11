@@ -31,6 +31,12 @@ export default defineConfig({
 					],
 				},
 				{
+					label: 'Tutorials',
+					items: [
+						{ label: 'Stacked behaviour', slug: 'tutorials/copper-trapdoor' },
+					],
+				},
+				{
 					label: 'Concepts',
 					items: [
 						{ label: 'Architecture', slug: 'concepts/architecture' },
@@ -49,6 +55,9 @@ export default defineConfig({
 					label: 'Modules',
 					items: [
 						{ label: 'Inventory transfer rules', slug: 'modules/inventory-transfer' },
+						{ label: 'Stacked behaviour', slug: 'modules/stacked-behaviour' },
+						{ label: 'Block behaviour', slug: 'modules/block-behaviour' },
+						{ label: 'Random ticking', slug: 'modules/random-ticking' },
 					],
 				},
 			],

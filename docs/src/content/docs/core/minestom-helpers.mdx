@@ -15,6 +15,9 @@ The typed `listen` extension adds an event listener and returns the same `EventN
 and chainable:
 
 ```kotlin
+import net.minestom.server.event.inventory.InventoryPreClickEvent
+import org.everbuild.twaddle.common.minestom.listen
+
 inventory.eventNode()
     .listen { event: InventoryPreClickEvent ->
         // Handle the event with its inferred concrete type.
@@ -29,6 +32,10 @@ event propagation model.
 The reified `setPlayListener` extension removes the class token from Kotlin packet-listener setup:
 
 ```kotlin
+import net.minestom.server.MinecraftServer
+import net.minestom.server.network.packet.client.play.ClientPlayerLoadedPacket
+import org.everbuild.twaddle.common.minestom.setPlayListener
+
 MinecraftServer.getPacketListenerManager()
     .setPlayListener<ClientPlayerLoadedPacket> { packet, player ->
         // Handle the packet with its concrete type.
@@ -39,6 +46,5 @@ This delegates to `PacketListenerManager.setPlayListener(Class, PacketPlayListen
 it replaces the listener for that packet type; it does not add another listener alongside the existing one.
 
 :::caution[Not composable]
-Do note that this method brutally replaces the existing listener for the given packet type thus disabling any existing listeners and
-minestom functionality
+Replacing a packet listener removes Minestom's existing handling for that packet. Provide the full handling you need.
 :::

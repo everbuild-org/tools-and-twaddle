@@ -1,0 +1,118 @@
+---
+title: Block behaviour
+description: Bind stacked rules to Minestom block callbacks and configure block entity data.
+---
+
+import Classification from '../../../components/Classification.astro';
+import { Tabs, TabItem } from '@astrojs/starlight/components';
+
+<Classification placement="Module" concern="Gameplay policy" maturity="Experimental" />
+
+`twaddle-stacked-behaviour-block` adds block selection, contexts, and handlers to [Stacked behaviour](../stacked-behaviour/).
+It exposes `twaddle-stacked-behaviour` and `twaddle-common-block` through API dependencies.
+
+```kotlin title="build.gradle.kts"
+dependencies {
+    implementation(projects.modules.twaddleStackedBehaviourBlock)
+}
+```
+
+## Define and install rules
+
+Start with the [copper trapdoor tutorial](../../tutorials/copper-trapdoor/). It creates a ruleset, inserts a guard into an existing
+chain, and registers the resulting handlers, in Kotlin and Java.
+
+`addBlock`, `blocks`, and `removeBlocks` accept `Block` or Adventure `Key` values. Selection uses the block ID,
+so different states of the same block share a behaviour. Inspect context properties when rules depend on state.
+The Java `blocks` overload puts the callback first so block selection remains varargs.
+
+`BlockRuleset.combine(a, b)` uses the same conflict rules as the general API. Modifications produce new definitions;
+compile new handlers to apply them.
+
+## Attach handlers
+
+[Compile and register handlers](../../tutorials/copper-trapdoor/#register-handlers) after Minestom initialization, then attach
+one with `block.withHandler(handler)` when placing the block. Register by handler ID before loading saved blocks
+that reference it. Compilation and registration do not rewrite existing blocks.
+
+`applyRulesAsDefault` registers suppliers under block IDs; your placement and loading code still owns attaching handlers.
+
+## Activities
+
+Import keys, contexts, and Kotlin shorthands from `org.everbuild.twaddle.stacked_behaviour_block.type`.
+For example, `interact.append { ... }` is `activity(InteractionActivity).append { ... }`.
+
+| Callback | Activity key | Shorthand | Additional context fields |
+| --- | --- | --- | --- |
+| `onInteract` | `InteractionActivity` | `interact` | Face, cursor position, player, hand |
+| `onPlace` | `PlacementActivity` | `place` | Previous block; optional player, hand, face, cursor X/Y/Z |
+| `onDestroy` | `DestroyActivity` | `destroy` | New block; optional player |
+| `onTouch` | `TouchActivity` | `touch` | Touching entity |
+| `tick` | `TickActivity` | `tick` | — |
+| `onRandomTick` | `RandomTickActivity` | `randomTick` | Optional replacement `newBlock` |
+
+Every context contains `block`, `instance`, `blockPosition`, and fresh invocation-local tags. Player-specific placement
+and destruction fields are null for programmatic operations.
+
+Interaction returns `false` to Minestom when the chain consumes the activity, preventing normal item use.
+For callbacks returning `void`, `Consume` only stops the remaining rules.
+
+`tick.clear()` contributes an empty tick chain and enables `isTickable()`. `tick.omit()` removes the contribution and
+disables ticking. Random ticking is independent and requires the [random ticking event node](../random-ticking/).
+
+`replaceBlock()` immediately calls `instance.setBlock(...)` in the ordinary callback contexts. In
+`RandomTickActivityContext`, it stages `newBlock` for the random ticking caller to apply. Copying a context with a
+different `block` only changes what later rules see.
+
+## Block entity configuration
+
+<Tabs syncKey="jvm-language">
+<TabItem label="Kotlin">
+```kotlin
+import net.minestom.server.instance.block.Block
+import net.minestom.server.tag.Tag
+import org.everbuild.twaddle.stacked_behaviour.configuration
+import org.everbuild.twaddle.stacked_behaviour_block.configuration.BlockEntityConfiguration
+import org.everbuild.twaddle.stacked_behaviour_block.configuration.blockEntity
+import org.everbuild.twaddle.stacked_behaviour_block.ruleset.BlockRuleset
+
+val CustomName = Tag.String("CustomName")
+val chestRules = BlockRuleset.build {
+    addBlock(Block.CHEST) {
+        blockEntity {
+            action = 1
+            tags += CustomName
+        }
+    }
+}
+val settings = chestRules[Block.CHEST.key()]!!.configuration<BlockEntityConfiguration>()
+val removed = chestRules.modify {
+    blocks(Block.CHEST) { removeConfiguration(BlockEntityConfiguration::class.java) }
+}
+```
+</TabItem>
+<TabItem label="Java">
+```java
+import java.util.Set;
+import net.minestom.server.instance.block.Block;
+import net.minestom.server.tag.Tag;
+import org.everbuild.twaddle.stacked_behaviour_block.configuration.BlockEntityConfiguration;
+import org.everbuild.twaddle.stacked_behaviour_block.ruleset.BlockRuleset;
+
+var customName = Tag.String("CustomName");
+var chestRules = BlockRuleset.build(editor -> editor.addBlock(Block.CHEST, behaviour ->
+    behaviour.configuration(BlockEntityConfiguration.class,
+        new BlockEntityConfiguration((byte) 1, Set.of(customName)))));
+var settings = chestRules.get(Block.CHEST.key()).configuration(BlockEntityConfiguration.class);
+var removed = chestRules.modify(editor -> editor.blocks(
+    behaviour -> behaviour.removeConfiguration(BlockEntityConfiguration.class), Block.CHEST));
+```
+</TabItem>
+</Tabs>
+
+This configures `getBlockEntityAction()` and `getBlockEntityTags()` on the generated handler. The tags select data sent
+to clients; they do not create an inventory or initialize values on placed blocks. Keep server-only data out of this list.
+
+Repeated Kotlin `blockEntity` edits start from existing settings and copy the tag selection. Java's
+`configuration(type, value)` replaces the complete value. Defaults are action `-1` and an empty selection.
+Removing the configuration restores those defaults when handlers are compiled again.

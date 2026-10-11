@@ -23,13 +23,25 @@ interface Rule<T : ActivityContext> {
         operator fun <T : ActivityContext> invoke(key: Key<T>, block: (T) -> RuleResult<T>): Rule<T> =
             RuleImpl(key, block)
 
+        operator fun <T : ActivityContext> invoke(@KeyPattern key: String, block: (T) -> RuleResult<T>): Rule<T> =
+            RuleImpl(Key(key), block)
+
         @JvmSynthetic
         @JvmName("__kt_rule")
         fun <T : ActivityContext> rule(key: Key<T>, block: (T) -> RuleResult<T>): Rule<T> = invoke(key, block)
 
+        @JvmSynthetic
+        @JvmName("__kt_rule")
+        fun <T : ActivityContext> rule(@KeyPattern key: String, block: (T) -> RuleResult<T>): Rule<T> = invoke(key, block)
+
         @JvmName("rule")
         @JvmStatic
         fun <T : ActivityContext> jvmRule(key: Key<T>, block: Function<T, RuleResult<T>>): Rule<T> =
+            invoke(key) { block.apply(it) }
+
+        @JvmName("rule")
+        @JvmStatic
+        fun <T : ActivityContext> jvmRule(@KeyPattern key: String, block: Function<T, RuleResult<T>>): Rule<T> =
             invoke(key) { block.apply(it) }
     }
 }

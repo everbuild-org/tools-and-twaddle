@@ -53,7 +53,7 @@ should normally live with the module that owns the concept.
 it `AutoCloseable` resources, and create named child contexts with `fork`. A parent shuts down its children alongside
 its other owned work, in reverse acquisition order.
 
-`initialized(server)` exposes the same lifetime as a `TwaddleServerContext`. Modules that run after Minestom starts can
+`initialized(server)` exposes the same lifetime as a `TwaddleServerContext`. Modules that run after Minestom initialization can
 accept that narrower type when they require a `MinecraftServer`.
 
 Shutdown proceeds in a fixed order:
@@ -65,3 +65,15 @@ Shutdown proceeds in a fixed order:
 
 `AfterInit<A>` describes work prepared before Minestom initialization that needs a `MinecraftServer` to finish. It is a
 small lifecycle vocabulary type, not a module container.
+
+## Gameplay modules
+
+| Module | Responsibility | API dependencies |
+| --- | --- | --- |
+| `twaddle-transfer-rules` | Shift-click routing | — |
+| `twaddle-stacked-behaviour` | Typed activities, chains, and configuration | — |
+| `twaddle-stacked-behaviour-block` | Block contexts and handlers | Stacked behaviour, common block |
+| `twaddle-random-ticking` | Random block sampling | Common block |
+
+`twaddle-common-block` owns shared block contracts such as `RandomTickHandler`. Random ticking can run with custom
+handlers or with the block ruleset factory; neither module requires lifecycle ownership.

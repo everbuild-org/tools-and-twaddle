@@ -34,6 +34,8 @@ immediately and throws `IllegalStateException`, preventing an unowned resource f
 Because `TwaddleContext` implements `CoroutineScope`, work launched on it is cancelled before resources close:
 
 ```kotlin
+import kotlinx.coroutines.launch
+
 context.launch {
     refreshStateUntilCancelled()
 }
@@ -79,6 +81,8 @@ Use `TwaddleServerContext` as a module parameter when that module cannot be inst
 
 The application block defines the lifetime. Because `MinecraftServer.start(...)` returns after starting Minestom's
 threads, a standalone application must keep the block alive until its shutdown signal arrives.
+
+The context does not stop Minestom automatically. The application also owns server shutdown.
 
 ## Work that needs Minestom
 
