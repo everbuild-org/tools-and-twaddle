@@ -54,6 +54,29 @@ Tools and twaddle is a good fit if you:
 It is probably not the right fit if you need a frozen API surface, broad ecosystem compatibility, or a drop-in
 replacement for established server platforms.
 
+## Installation
+
+Add the public Maven repository and the modules your server needs:
+
+```kotlin
+repositories {
+    mavenCentral()
+    maven {
+        name = "asordaPublic"
+        url = uri("https://mvn.everbuild.org/public")
+    }
+}
+
+dependencies {
+    implementation("org.everbuild.twaddle:twaddle-lifecycle:0.1.0")
+}
+```
+
+Use a published version from [GitHub releases](https://github.com/everbuild-org/tools-and-twaddle/releases)
+for all Twaddle modules. The examples use the configured version `0.1.0`; Maven versions omit the tag's `v` prefix.
+Consumers do not need publishing credentials. Use Java 25 and supply your server's Minestom dependency.
+See the [getting-started guide](https://twaddle.asorda.net/getting-started/) for all artifact coordinates and setup details.
+
 ## Contributing
 
 Feedback is most useful when it comes from concrete use cases. Bug reports, architectural criticism, API proposals, and
@@ -61,6 +84,16 @@ small reference implementations are all valuable while the project direction is 
 
 If you are building something on top of Tools and twaddle, document the friction points. Those rough edges are the point
 of an experimental framework: they show what the core should absorb and what should stay outside it.
+
+## Releasing
+
+Set `twaddle.version` in `gradle.properties` to a new release version and push the change.
+In GitHub Actions, select **Release → Run workflow** and choose the branch to release.
+The workflow builds and tests the `v<version>` tag, pushes it, publishes all library modules to
+`https://mvn.everbuild.org/public`, and creates a GitHub release with generated notes and Gradle setup instructions.
+Configure the repository secrets `MVN_TWADDLE_USER` and `MVN_TWADDLE_PASSWORD` before running it.
+Existing tags and snapshot versions are rejected. If publishing fails after the tag is pushed, inspect the Maven
+repository before recovering manually; starting another release with the same version is blocked.
 
 ## Name
 Yes, the name is a bit cheeky. The framework is serious about architecture, even if the branding refuses to act like it.

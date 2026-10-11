@@ -9,6 +9,14 @@ plugins {
 publishing {
     repositories {
         mavenLocal()
+        maven {
+            name = "asordaPublic"
+            url = uri("https://mvn.everbuild.org/public")
+            credentials {
+                username = providers.environmentVariable("MVN_TWADDLE_USER").orNull
+                password = providers.environmentVariable("MVN_TWADDLE_PASSWORD").orNull
+            }
+        }
     }
 
     publications {
