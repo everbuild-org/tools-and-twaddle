@@ -116,6 +116,26 @@ the ruleset. The original ruleset is unchanged.
 Kotlin callers can import `org.everbuild.twaddle.stacked_behaviour_block.type.interact` to use
 `interact.append { ... }` as shorthand for `activity(InteractionActivity).append { ... }`.
 
+The block layer dispatches these activities through `RuleBlockHandler`:
+
+| Callback | Activity key | Kotlin shorthand |
+| --- | --- | --- |
+| `onInteract` | `InteractionActivity` | `interact` |
+| `onPlace` | `PlacementActivity` | `place` |
+| `onDestroy` | `DestroyActivity` | `destroy` |
+| `onTouch` | `TouchActivity` | `touch` |
+| `tick` | `TickActivity` | `tick` |
+
+Keys, contexts, and shorthand extensions live in `org.everbuild.twaddle.stacked_behaviour_block.type`.
+Placement contexts include `previousBlock`; destruction contexts include `newBlock`. Player-specific fields are
+nullable for programmatic operations. Touch contexts include the touching entity. Each callback creates a fresh context
+with invocation-local tags. For callbacks returning `void`, `Consume` stops the remaining rules in that activity.
+
+A tick contribution makes `isTickable()` return true, including an explicit empty chain from `tick.clear()`.
+An absent contribution or `tick.omit()` disables ticking. This is Minestom handler ticking, separate from random ticking.
+Java callers register activities through `activity(...)`, for example
+`behaviour.activity(TickActivityKt.getTickActivity()).clear()`.
+
 Declare activity keys once and reuse them: keys use identity equality, with their textual IDs serving as diagnostic
 labels. A key's ruleset parameter restricts its domain, and its context parameter determines which rules can be installed.
 For another domain, define a ruleset type such as `class ItemRuleset : StackedRuleset<ItemRuleset, RulesetEditor<ItemRuleset>>(emptyMap(), ::RulesetEditor)`, then use
@@ -171,7 +191,7 @@ Kotlin callers can import `org.everbuild.twaddle.stacked_behaviour.configuration
 `behaviour.configuration<BlockEntityConfiguration>()`.
 
 An integration compiles a selected activity with `behaviour.createApplicator(activityKey, factory)` and supplies its
-context to `apply`. Missing activities fall through. The block integration's `createHandlers` selects `InteractionActivity`;
+context to `apply`. Missing activities fall through. The block integration's `createHandlers` selects the activities above;
 installation onto blocks and registration with Minestom remain the caller's responsibility. Custom activity dispatch
 belongs to the integration that owns that activity.
 

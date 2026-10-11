@@ -15,8 +15,32 @@ import org.jspecify.annotations.NonNull;
 import org.junit.jupiter.api.Test;
 
 import static org.junit.jupiter.api.Assertions.*;
+import static org.everbuild.twaddle.stacked_behaviour_block.type.PlacementActivityKt.getPlacementActivity;
+import static org.everbuild.twaddle.stacked_behaviour_block.type.DestroyActivityKt.getDestroyActivity;
+import static org.everbuild.twaddle.stacked_behaviour_block.type.TouchActivityKt.getTouchActivity;
+import static org.everbuild.twaddle.stacked_behaviour_block.type.TickActivityKt.getTickActivity;
 
 class BlockRulesetJavaTest {
+    @Test
+    void blockHandlerActivitiesCanBeRegisteredAndTickingDisabledFromJava() {
+        var ruleset = BlockRuleset.build(editor -> editor.addBlock(Block.STONE, behaviour -> {
+            behaviour.activity(getPlacementActivity()).clear();
+            behaviour.activity(getDestroyActivity()).clear();
+            behaviour.activity(getTouchActivity()).clear();
+            behaviour.activity(getTickActivity()).clear();
+        }));
+        var definition = ruleset.get(Block.STONE.key());
+        assertNotNull(definition.activity(getPlacementActivity()));
+        assertNotNull(definition.activity(getDestroyActivity()));
+        assertNotNull(definition.activity(getTouchActivity()));
+        assertTrue(RuleBlockHandlerFactory.INSTANCE.create(
+            Block.STONE.key(), definition, new LoopingRuleChainApplicatorFactory()).isTickable());
+        var removed = ruleset.modify(editor -> editor.blocks(
+            behaviour -> behaviour.activity(getTickActivity()).omit(), Block.STONE));
+        assertFalse(RuleBlockHandlerFactory.INSTANCE.create(
+            Block.STONE.key(), removed.get(Block.STONE.key()), new LoopingRuleChainApplicatorFactory()).isTickable());
+    }
+
     @Test
     void configurationsCanBeSetReadAndRemovedFromJava() {
         var tag = Tag.String("inventory");

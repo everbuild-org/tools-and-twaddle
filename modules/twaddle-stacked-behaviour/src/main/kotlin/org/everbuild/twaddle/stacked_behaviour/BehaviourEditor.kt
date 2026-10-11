@@ -11,7 +11,11 @@ class BehaviourEditor<R : StackedRuleset<R, *>>(
 
     fun <T : Any> configuration(type: Class<T>): T? = configurations[type]?.let(type::cast)
 
-    /** Sets an immutable configuration value under the supplied class, replacing any existing value. */
+    /**
+     * Stores a configuration value under its exact class.
+     *
+     * Configuration values should be immutable. The value itself is not copied.
+     */
     fun <T : Any> configuration(type: Class<T>, value: T) {
         configurations[type] = type.cast(value)
     }
