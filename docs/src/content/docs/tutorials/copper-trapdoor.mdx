@@ -41,7 +41,7 @@ val ToggleTrapdoor = Rule<InteractionActivityContext>("example:toggle_trapdoor")
     RuleResult.Consume
 }
 val ruleset = BlockRuleset.build {
-    addBlock(Block.COPPER_TRAPDOOR) {
+    blocks(Block.COPPER_TRAPDOOR) {
         interact.append { install(ToggleTrapdoor) }
     }
 }
@@ -62,12 +62,12 @@ var toggleTrapdoor = Rule.<InteractionActivityContext>rule("example:toggle_trapd
     context.replaceBlock(context.getBlock().withProperty("open", Boolean.toString(!open)));
     return RuleResult.consume();
 });
-var ruleset = BlockRuleset.build(editor -> editor.addBlock(Block.COPPER_TRAPDOOR, behaviour -> {
+var ruleset = BlockRuleset.build(editor -> editor.blocks(behaviour -> {
     behaviour.activity(getInteractionActivity()).append(chain -> {
         chain.install(toggleTrapdoor);
         return Unit.INSTANCE;
     });
-}));
+}, Block.COPPER_TRAPDOOR));
 ```
 </TabItem>
 </Tabs>

@@ -25,9 +25,16 @@ dependencies {
 Start with the [copper trapdoor tutorial](../../tutorials/copper-trapdoor/). It creates a ruleset, inserts a guard into an existing
 chain, and registers the resulting handlers, in Kotlin and Java.
 
-`addBlock`, `blocks`, and `removeBlocks` accept `Block` or Adventure `Key` values. Selection uses the block ID,
+`blocks` and `removeBlocks` accept `Block` or Adventure `Key` values. Selection uses the block ID,
 so different states of the same block share a behaviour. Inspect context properties when rules depend on state.
+`blocks` creates missing entries and edits existing ones in both `build` and `modify`. Each distinct block gets its own
+editor, and the whole selection commits only if every edit succeeds. Repeated calls preserve activities and configuration
+that the callback does not change. Removing a missing block is an error.
 The Java `blocks` overload puts the callback first so block selection remains varargs.
+
+When migrating from `addBlock`, use `blocks(Block.CHEST) { ... }` in Kotlin or
+`editor.blocks(behaviour -> { ... }, Block.CHEST)` in Java. `blocks` no longer rejects missing entries;
+check presence explicitly before editing when your application requires an existing definition.
 
 `BlockRuleset.combine(a, b)` uses the same conflict rules as the general API. Modifications produce new definitions;
 compile new handlers to apply them.
@@ -81,7 +88,7 @@ import org.everbuild.twaddle.stacked_behaviour_block.ruleset.BlockRuleset
 
 val CustomName = Tag.String("CustomName")
 val chestRules = BlockRuleset.build {
-    addBlock(Block.CHEST) {
+    blocks(Block.CHEST) {
         blockEntity {
             action = 1
             tags += CustomName
@@ -103,9 +110,9 @@ import org.everbuild.twaddle.stacked_behaviour_block.configuration.BlockEntityCo
 import org.everbuild.twaddle.stacked_behaviour_block.ruleset.BlockRuleset;
 
 var customName = Tag.String("CustomName");
-var chestRules = BlockRuleset.build(editor -> editor.addBlock(Block.CHEST, behaviour ->
+var chestRules = BlockRuleset.build(editor -> editor.blocks(behaviour ->
     behaviour.configuration(BlockEntityConfiguration.class,
-        new BlockEntityConfiguration((byte) 1, Set.of(customName)))));
+        new BlockEntityConfiguration((byte) 1, Set.of(customName))), Block.CHEST));
 var settings = chestRules.get(Block.CHEST.key()).configuration(BlockEntityConfiguration.class);
 var removed = chestRules.modify(editor -> editor.blocks(
     behaviour -> behaviour.removeConfiguration(BlockEntityConfiguration.class), Block.CHEST));

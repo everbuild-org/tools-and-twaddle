@@ -9,18 +9,12 @@ open class RulesetEditor<R : StackedRuleset<R, *>>(
 ) {
     private val definitions = LinkedHashMap(definitions)
 
-    /** Adds a new subject. Existing subjects must be edited explicitly. */
-    fun add(key: Key, edit: BehaviourEditor<R>.() -> Unit) {
-        require(key !in definitions) { "Behaviour $key already exists" }
-        definitions[key] = Behaviour.build(edit)
-    }
-
-    /** Edits each selected subject independently and commits only if every edit succeeds. */
+    /** Creates missing subjects or edits existing ones independently, committing only if every edit succeeds. */
     fun behaviours(vararg keys: Key, edit: BehaviourEditor<R>.() -> Unit) {
         val selected = keys.distinct()
-        selected.forEach { key -> require(key in definitions) { "Behaviour $key is not present" } }
         val updates = selected.associateWith { key ->
-            BehaviourEditor(definitions.getValue(key)).apply(edit).build()
+            val editor = definitions[key]?.let { BehaviourEditor(it) } ?: BehaviourEditor<R>()
+            editor.apply(edit).build()
         }
         definitions.putAll(updates)
     }

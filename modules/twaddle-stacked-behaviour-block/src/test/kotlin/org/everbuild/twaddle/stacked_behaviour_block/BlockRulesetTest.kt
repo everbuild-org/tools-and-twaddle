@@ -41,8 +41,8 @@ val BlockRulesetTests by testSuite {
         val second = interactionRule("second")
         val added = interactionRule("added")
         val original = BlockRuleset.build {
-            addBlock(stone) { activity(InteractionActivity).replace { install(first) } }
-            addBlock(dirt) { activity(InteractionActivity).replace { install(second) } }
+            blocks(stone) { activity(InteractionActivity).replace { install(first) } }
+            blocks(dirt) { activity(InteractionActivity).replace { install(second) } }
         }
         val modified = original.modify {
             blocks(stone, dirt) { activity(InteractionActivity).append { install(added) } }
@@ -53,15 +53,13 @@ val BlockRulesetTests by testSuite {
         modified[dirt]!!.activity(InteractionActivity)!!.executionOrder() shouldBe listOf("second", "added")
     }
 
-    envTest("Invalid block selections fail and leave existing entries unchanged") {
+    envTest("Removing a selection with missing blocks fails and leaves existing entries unchanged") {
         val present = Key.key("test:present")
         val missing = Key.key("test:missing")
         val rule = interactionRule("original")
         val original =
-            BlockRuleset.build { addBlock(present) { activity(InteractionActivity).replace { install(rule) } } }
+            BlockRuleset.build { blocks(present) { activity(InteractionActivity).replace { install(rule) } } }
         val unchanged = original.modify {
-            shouldThrow<IllegalArgumentException> { addBlock(present) {} }
-            shouldThrow<IllegalArgumentException> { blocks(present, missing) { activity(InteractionActivity).clear() } }
             shouldThrow<IllegalArgumentException> { removeBlocks(present, missing) }
         }
         unchanged[present]!!.activity(InteractionActivity)!!.executionOrder() shouldBe listOf("original")
@@ -70,7 +68,7 @@ val BlockRulesetTests by testSuite {
 
     envTest("Absent and explicitly empty contributions have different combination semantics") {
         val key = Key.key("test:block")
-        val absent = BlockRuleset.build { addBlock(key) {} }
+        val absent = BlockRuleset.build { blocks(key) {} }
         val empty = absent.modify { blocks(key) { activity(InteractionActivity).clear() } }
         absent[key]!!.activity(InteractionActivity) shouldBe null
         empty[key]!!.activity(InteractionActivity)!!.executionOrder() shouldBe emptyList()
@@ -85,13 +83,12 @@ val BlockRulesetTests by testSuite {
         val secondKey = Key.key("test:second")
         val rule = interactionRule("rule")
         val first =
-            BlockRuleset.build { addBlock(firstKey) { activity(InteractionActivity).replace { install(rule) } } }
+            BlockRuleset.build { blocks(firstKey) { activity(InteractionActivity).replace { install(rule) } } }
         val second =
-            BlockRuleset.build { addBlock(secondKey) { activity(InteractionActivity).replace { install(rule) } } }
+            BlockRuleset.build { blocks(secondKey) { activity(InteractionActivity).replace { install(rule) } } }
         val combined = BlockRuleset.combine(first, second)
         combined[firstKey]!!.activity(InteractionActivity)!!.executionOrder() shouldBe listOf("rule")
         combined[secondKey]!!.activity(InteractionActivity)!!.executionOrder() shouldBe listOf("rule")
         shouldThrow<IllegalArgumentException> { BlockRuleset.combine(first, first) }
     }
 }
-

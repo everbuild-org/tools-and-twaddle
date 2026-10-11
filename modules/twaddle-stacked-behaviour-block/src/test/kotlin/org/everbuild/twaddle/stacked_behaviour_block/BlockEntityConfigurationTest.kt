@@ -25,7 +25,7 @@ val BlockEntityConfigurationTests by testSuite {
     envTest("Block entity configuration reaches handlers alongside interaction rules") { env ->
         val inventoryTag = Tag.String("inventory")
         val ruleset = BlockRuleset.build {
-            addBlock(Block.CHEST) {
+            blocks(Block.CHEST) {
                 blockEntity {
                     action = 1
                     tags += inventoryTag
@@ -64,7 +64,7 @@ val BlockEntityConfigurationTests by testSuite {
         configuration.tags shouldBe setOf(first)
         lateinit var retained: BlockEntityConfigurationEditor
         val original = BlockRuleset.build {
-            addBlock(Block.CHEST) { configuration(BlockEntityConfiguration::class.java, configuration) }
+            blocks(Block.CHEST) { configuration(BlockEntityConfiguration::class.java, configuration) }
         }
         val modified = original.modify {
             blocks(Block.CHEST) {

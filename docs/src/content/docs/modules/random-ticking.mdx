@@ -77,7 +77,7 @@ val GrowWheat = Rule<RandomTickActivityContext>("example:grow_wheat") { context 
     RuleResult.Next
 }
 val growth = BlockRuleset.build {
-    addBlock(Block.WHEAT) {
+    blocks(Block.WHEAT) {
         randomTick.append { install(GrowWheat) }
     }
 }
@@ -101,12 +101,12 @@ var growWheat = Rule.<RandomTickActivityContext>rule("example:grow_wheat", conte
     }
     return RuleResult.next();
 });
-var growth = BlockRuleset.build(editor -> editor.addBlock(Block.WHEAT, behaviour -> {
+var growth = BlockRuleset.build(editor -> editor.blocks(behaviour -> {
     behaviour.activity(getRandomTickActivity()).append(chain -> {
         chain.install(growWheat);
         return Unit.INSTANCE;
     });
-}));
+}, Block.WHEAT));
 ```
 </TabItem>
 </Tabs>
