@@ -23,13 +23,15 @@ sealed interface RuleResult<out T : ActivityContext> {
     data object Consume : RuleResult<Nothing>
 
     /**
-     * Continues rule evaluation using [newContext] as the context for
-     * later rules.
+     * Continues rule evaluation using [newContext] for later rules.
      *
-     * This can be used when a rule transforms the current activity and wants
-     * later rules to operate on the transformed state.
+     * This allows rules to reinterpret an activity, for example, by
+     * substituting a different block type to reuse its behavior.
      *
-     * @property newContext the context to use for subsequent rule evaluation
+     * The new context only affects subsequent rule evaluation.
+     * It does not modify the underlying world or activity state.
+     *
+     * @property newContext the context passed to later rules
      */
     data class Cascade<T : ActivityContext>(
         val newContext: T,
@@ -49,8 +51,15 @@ sealed interface RuleResult<out T : ActivityContext> {
         fun <T : ActivityContext> consume(): RuleResult<T> = Consume
 
         /**
-         * Returns a result instructing the rule engine to continue evaluation
-         * using [newContext].
+         * Continues rule evaluation using [newContext] for later rules.
+         *
+         * This allows rules to reinterpret an activity, for example, by
+         * substituting a different block type to reuse its behavior.
+         *
+         * The new context only affects subsequent rule evaluation.
+         * It does not modify the underlying world or activity state.
+         *
+         * @property newContext the context passed to later rules
          */
         @JvmStatic
         fun <T : ActivityContext> cascade(newContext: T): RuleResult<T> =

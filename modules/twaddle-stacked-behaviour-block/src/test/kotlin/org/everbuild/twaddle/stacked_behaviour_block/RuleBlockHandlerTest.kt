@@ -42,9 +42,11 @@ val RuleBlockHandlerTests by testSuite {
             Block.STONE, instance, BlockFace.TOP, Vec.ZERO, Vec.ZERO, player, PlayerHand.MAIN,
         )
         val factory = LoopingRuleChainApplicatorFactory()
-        customRules.createHandlers(factory) { it }.getValue(Block.STONE.key()).onInteract(interaction) shouldBe true
+        customRules.createHandlers(factory, RuleBlockHandlerFactory) { it }
+            .getValue(Block.STONE.key()).onInteract(interaction) shouldBe true
         val combined = BlockRuleset.combine(customRules, interactionRules)
-        combined.createHandlers(factory) { it }.getValue(Block.STONE.key()).onInteract(interaction) shouldBe false
+        combined.createHandlers(factory, RuleBlockHandlerFactory) { it }
+            .getValue(Block.STONE.key()).onInteract(interaction) shouldBe false
         combined[Block.STONE.key()]!!.createApplicator(customActivity, factory)
             .apply(InteractionActivityContext(interaction)).ruleResult shouldBe RuleResult.Consume
     }
@@ -72,7 +74,7 @@ val RuleBlockHandlerTests by testSuite {
                 }
             }
             val handlerKey = Key.key("test:stone_handler")
-            val handler = ruleset.createHandlers(LoopingRuleChainApplicatorFactory()) { handlerKey }
+            val handler = ruleset.createHandlers(LoopingRuleChainApplicatorFactory(), RuleBlockHandlerFactory) { handlerKey }
                 .getValue(Block.STONE.key())
             val interaction = BlockHandler.Interaction(
                 Block.STONE, instance, BlockFace.NORTH, blockPosition, cursorPosition, player, PlayerHand.OFF,
