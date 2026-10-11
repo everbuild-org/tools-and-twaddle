@@ -11,9 +11,12 @@ import { Tabs, TabItem } from '@astrojs/starlight/components';
 `twaddle-stacked-behaviour-block` adds block selection, contexts, and handlers to [Stacked behaviour](../stacked-behaviour/).
 It exposes `twaddle-stacked-behaviour` and `twaddle-common-block` through API dependencies.
 
+First [configure the public Maven repository](../../getting-started/#configure-the-repository).
+The examples use version `0.1.0`; use the same release version for all Twaddle modules.
+
 ```kotlin title="build.gradle.kts"
 dependencies {
-    implementation(projects.modules.twaddleStackedBehaviourBlock)
+    implementation("org.everbuild.twaddle:twaddle-stacked-behaviour-block:0.1.0")
 }
 ```
 

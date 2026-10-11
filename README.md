@@ -54,6 +54,29 @@ Tools and twaddle is a good fit if you:
 It is probably not the right fit if you need a frozen API surface, broad ecosystem compatibility, or a drop-in
 replacement for established server platforms.
 
+## Installation
+
+Add the public Maven repository and the modules your server needs:
+
+```kotlin
+repositories {
+    mavenCentral()
+    maven {
+        name = "asordaPublic"
+        url = uri("https://mvn.everbuild.org/public")
+    }
+}
+
+dependencies {
+    implementation("org.everbuild.twaddle:twaddle-lifecycle:0.1.0")
+}
+```
+
+Use a published version from [GitHub releases](https://github.com/everbuild-org/tools-and-twaddle/releases)
+for all Twaddle modules. The examples use the configured version `0.1.0`; Maven versions omit the tag's `v` prefix.
+Consumers do not need publishing credentials. Use Java 25 and supply your server's Minestom dependency.
+See the [getting-started guide](https://twaddle.asorda.net/getting-started/) for all artifact coordinates and setup details.
+
 ## Contributing
 
 Feedback is most useful when it comes from concrete use cases. Bug reports, architectural criticism, API proposals, and

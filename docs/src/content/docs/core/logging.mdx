@@ -7,7 +7,16 @@ import Classification from '../../../components/Classification.astro';
 
 <Classification placement="Foundation" concern="Observability" maturity="Experimental" />
 
-Provided by `twaddle-structured-logging` (`implementation(projects.modules.twaddleStructuredLogging)`).
+Provided by `twaddle-structured-logging`.
+
+First [configure the public Maven repository](../../getting-started/#configure-the-repository).
+Use the same release version for all Twaddle modules.
+
+```kotlin title="build.gradle.kts"
+dependencies {
+    implementation("org.everbuild.twaddle:twaddle-structured-logging:0.1.0")
+}
+```
 
 The logging helpers build on SLF4J 2's event API. They do not select a logging backend; the application provides one at
 runtime.
