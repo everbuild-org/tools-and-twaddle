@@ -11,11 +11,11 @@ Also, make sure you understand [Minestom](https://minestom.net) before continuin
 
 ## Add the foundation
 
-Not all Twaddle features need a running core. Look at the page of your feature to see what it needs.
+Add `twaddle-lifecycle` when your application needs resource and coroutine ownership. Feature modules declare their own dependencies.
 
 ```kotlin title="build.gradle.kts"
 dependencies {
-    implementation(projects.twaddleCore)
+    implementation(projects.modules.twaddleLifecycle)
 }
 ```
 
@@ -34,7 +34,7 @@ When the application block finishes or fails, the context cancels lifetime corou
 import kotlinx.coroutines.awaitCancellation
 import net.minestom.server.Auth
 import net.minestom.server.MinecraftServer
-import org.everbuild.twaddle.core.runTwaddleApplication
+import org.everbuild.twaddle.lifecycle.runTwaddleApplication
 
 suspend fun main() = runTwaddleApplication { cx ->
     // Install pre-init modules here
@@ -54,7 +54,7 @@ Create a TwaddleContext manually and wrap the process lifetime with `try`/`final
 ```java
 import net.minestom.server.Auth;
 import net.minestom.server.MinecraftServer;
-import org.everbuild.twaddle.core.TwaddleContext;
+import org.everbuild.twaddle.lifecycle.TwaddleContext;
 import java.util.concurrent.CountDownLatch;
 
 void main() throws InterruptedException {

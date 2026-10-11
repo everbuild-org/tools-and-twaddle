@@ -8,6 +8,8 @@ dependencies {
     implementation(libs.kotlinx.coroutines)
     runtimeOnly(libs.bundles.log4j.runtime)
 
-    implementation(projects.twaddleCore)
+    implementation(projects.modules.twaddleLifecycle)
+    implementation(projects.modules.twaddleStructuredLogging)
+    implementation(projects.common.twaddleCommonMinestom)
     implementation(projects.modules.twaddleTransferRules)
 }

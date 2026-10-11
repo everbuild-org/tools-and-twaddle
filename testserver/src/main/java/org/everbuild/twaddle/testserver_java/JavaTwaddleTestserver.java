@@ -2,9 +2,9 @@ package org.everbuild.twaddle.testserver_java;
 
 import net.minestom.server.Auth;
 import net.minestom.server.MinecraftServer;
-import org.everbuild.twaddle.core.TwaddleContextImpl;
-import org.everbuild.twaddle.core.logging.LogField;
-import org.everbuild.twaddle.core.logging.StructuredLog;
+import org.everbuild.twaddle.lifecycle.TwaddleContextImpl;
+import org.everbuild.twaddle.structured_logging.LogField;
+import org.everbuild.twaddle.structured_logging.StructuredLog;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 

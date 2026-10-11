@@ -16,11 +16,11 @@ import net.minestom.server.event.server.ServerListPingEvent
 import net.minestom.server.instance.LightingChunk
 import net.minestom.server.instance.block.Block
 import net.minestom.server.ping.Status
-import org.everbuild.twaddle.core.logging.field
-import org.everbuild.twaddle.core.logging.info
-import org.everbuild.twaddle.core.logging.logger
-import org.everbuild.twaddle.core.minestom.listen
-import org.everbuild.twaddle.core.runTwaddleApplication
+import org.everbuild.twaddle.structured_logging.field
+import org.everbuild.twaddle.structured_logging.info
+import org.everbuild.twaddle.structured_logging.logger
+import org.everbuild.twaddle.common.minestom.listen
+import org.everbuild.twaddle.lifecycle.runTwaddleApplication
 
 val logger = logger()
 
