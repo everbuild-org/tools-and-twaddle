@@ -1,8 +1,10 @@
 package org.everbuild.twaddle.stacked_behaviour_block
 
 import net.kyori.adventure.key.Key
+import net.minestom.server.instance.block.Block
 import net.minestom.server.instance.block.BlockHandler
 import net.minestom.server.tag.Tag
+import org.everbuild.twaddle.common.block.tick.RandomTickHandler
 import org.everbuild.twaddle.stacked_behaviour.Behaviour
 import org.everbuild.twaddle.stacked_behaviour.RuleChainApplicator
 import org.everbuild.twaddle.stacked_behaviour.RuleResult
@@ -17,6 +19,8 @@ import org.everbuild.twaddle.stacked_behaviour_block.type.PlacementActivity
 import org.everbuild.twaddle.stacked_behaviour_block.type.PlacementActivityContext
 import org.everbuild.twaddle.stacked_behaviour_block.type.DestroyActivity
 import org.everbuild.twaddle.stacked_behaviour_block.type.DestroyActivityContext
+import org.everbuild.twaddle.stacked_behaviour_block.type.RandomTickActivity
+import org.everbuild.twaddle.stacked_behaviour_block.type.RandomTickActivityContext
 import org.everbuild.twaddle.stacked_behaviour_block.type.TouchActivity
 import org.everbuild.twaddle.stacked_behaviour_block.type.TouchActivityContext
 
@@ -61,6 +65,30 @@ open class RuleBlockHandler @JvmOverloads constructor(
     }
 }
 
+open class RandomTickRuleBlockHandler @JvmOverloads constructor(
+    key: Key,
+    interaction: RuleChainApplicator<InteractionActivityContext>,
+    blockEntity: BlockEntityConfiguration = BlockEntityConfiguration(),
+    ticking: RuleChainApplicator<TickActivityContext>? = null,
+    placement: RuleChainApplicator<PlacementActivityContext> = RuleChainApplicator.empty(),
+    destroy: RuleChainApplicator<DestroyActivityContext> = RuleChainApplicator.empty(),
+    touch: RuleChainApplicator<TouchActivityContext> = RuleChainApplicator.empty(),
+    private val randomTick: RuleChainApplicator<RandomTickActivityContext> = RuleChainApplicator.empty(),
+) : RuleBlockHandler(
+    key,
+    interaction,
+    blockEntity,
+    ticking,
+    placement,
+    destroy,
+    touch,
+), RandomTickHandler {
+    override fun onRandomTick(randomTick: RandomTickHandler.RandomTick): Block? {
+        val result = this.randomTick.apply(RandomTickActivityContext(randomTick))
+        return result.finalContext.block
+    }
+}
+
 fun interface BlockHandlerFactory<Target> {
     fun create(
         handlerKey: Key,
@@ -74,15 +102,30 @@ object RuleBlockHandlerFactory : BlockHandlerFactory<BlockHandler> {
         handlerKey: Key,
         definition: Behaviour<BlockRuleset>,
         ruleChainFactory: RuleChainApplicatorFactory,
-    ): RuleBlockHandler = RuleBlockHandler(
-        handlerKey,
-        interaction = definition.createApplicator(InteractionActivity, ruleChainFactory),
-        blockEntity = definition.configuration(BlockEntityConfiguration::class.java) ?: BlockEntityConfiguration(),
-        ticking = definition.activity(TickActivity)?.let { ruleChainFactory.create(it) },
-        placement = definition.createApplicator(PlacementActivity, ruleChainFactory),
-        destroy = definition.createApplicator(DestroyActivity, ruleChainFactory),
-        touch = definition.createApplicator(TouchActivity, ruleChainFactory),
-    )
+    ): RuleBlockHandler {
+        val interaction = definition.createApplicator(InteractionActivity, ruleChainFactory)
+        val blockEntity =
+            definition.configuration(BlockEntityConfiguration::class.java) ?: BlockEntityConfiguration.EMPTY
+        val ticking = definition.activity(TickActivity)?.let { ruleChainFactory.create(it) }
+        val placement = definition.createApplicator(PlacementActivity, ruleChainFactory)
+        val destroy = definition.createApplicator(DestroyActivity, ruleChainFactory)
+        val touch = definition.createApplicator(TouchActivity, ruleChainFactory)
+        val randomTick = definition.activity(RandomTickActivity)?.let { ruleChainFactory.create(it) }
+        return if (randomTick == null) {
+            RuleBlockHandler(handlerKey, interaction, blockEntity, ticking, placement, destroy, touch)
+        } else {
+            RandomTickRuleBlockHandler(
+                handlerKey,
+                interaction,
+                blockEntity,
+                ticking,
+                placement,
+                destroy,
+                touch,
+                randomTick
+            )
+        }
+    }
 }
 
 /**

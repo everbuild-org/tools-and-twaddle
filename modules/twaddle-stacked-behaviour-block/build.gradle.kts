@@ -8,5 +8,6 @@ description = "Block behaviour built on the stacked behaviour API"
 dependencies {
     compileOnly(libs.minestom)
     api(projects.modules.twaddleStackedBehaviour)
+    api(projects.common.twaddleCommonBlock)
     testImplementation(projects.common.twaddleTesting)
 }
