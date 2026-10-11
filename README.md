@@ -96,6 +96,10 @@ Every chain editing verb is available through `activity(key)`, including `append
 `replace`, and `remove`. `omit()` removes the activity contribution; `clear()` contributes an explicit empty chain.
 Combining rulesets permits different activities on the same subject and rejects overlapping activity contributions.
 
+Use `ruleset.modify { retainOnly(Block.STONE, Block.DIRT) }` to keep selected blocks. The general editor accepts `Key`
+identifiers. Retained behaviours keep their original order; absent identifiers are ignored, and `retainOnly()` clears
+the ruleset. The original ruleset is unchanged.
+
 Kotlin callers can import `org.everbuild.twaddle.stacked_behaviour_block.type.interact` to use
 `interact.append { ... }` as shorthand for `activity(InteractionActivity).append { ... }`.
 

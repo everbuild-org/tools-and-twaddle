@@ -26,6 +26,25 @@ private fun increment(name: String, by: Int) = Rule<CountContext>(Rule.Key("test
 }
 
 val StackedRulesetTests by testSuite {
+    test("Retaining subjects filters without reordering or changing their behaviours") {
+        val second = Key.key("test:second")
+        val third = Key.key("test:third")
+        val missing = Key.key("test:missing")
+        val original = StackedRuleset.build<TestRuleset> {
+            add(subject) { activity(countActivity).append { install(increment("count", 3)) } }
+            add(second) {}
+            add(third) { activity(messageActivity).clear() }
+        }
+        val selected = original.modify { retainOnly(third, missing, subject, subject) }
+        selected.behaviours.keys.toList() shouldBe listOf(subject, third)
+        selected[subject] shouldBe original[subject]
+        selected[third] shouldBe original[third]
+        selected[subject]!!.createApplicator(countActivity, factory).apply(CountContext()).finalContext.count shouldBe 3
+        original.behaviours.keys.toList() shouldBe listOf(subject, second, third)
+        original.modify { retainOnly() }.behaviours shouldBe emptyMap()
+        original.modify { retainOnly(missing) }.behaviours shouldBe emptyMap()
+    }
+
     test("One behaviour dispatches different typed activities and retains repeated edits") {
         val ruleset = StackedRuleset.build<TestRuleset> {
             add(subject) {
