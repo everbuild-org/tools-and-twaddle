@@ -12,6 +12,10 @@ class BlockEntityConfiguration @JvmOverloads constructor(
     tags: Collection<Tag<*>> = emptySet(),
 ) {
     val tags: Set<Tag<*>> = Collections.unmodifiableSet(LinkedHashSet(tags))
+
+    companion object {
+        val EMPTY = BlockEntityConfiguration()
+    }
 }
 
 @StackedBehaviourDslMarker
@@ -27,7 +31,7 @@ class BlockEntityConfigurationEditor @JvmOverloads constructor(
 /** Edits the existing settings and commits a snapshot only after [edit] succeeds. */
 @JvmSynthetic
 fun BehaviourEditor<BlockRuleset>.blockEntity(edit: BlockEntityConfigurationEditor.() -> Unit) {
-    val existing = configuration(BlockEntityConfiguration::class.java) ?: BlockEntityConfiguration()
+    val existing = configuration(BlockEntityConfiguration::class.java) ?: BlockEntityConfiguration.EMPTY
     val updated = BlockEntityConfigurationEditor(existing).apply(edit).build()
     configuration(BlockEntityConfiguration::class.java, updated)
 }
