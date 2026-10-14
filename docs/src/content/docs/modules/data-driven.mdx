@@ -1,0 +1,141 @@
+---
+title: Data-driven definitions
+description: Load typed definitions into application-owned Minestom registries.
+---
+
+The `twaddle-data-driven` module loads files into typed registries and replaces each registry with an immutable
+snapshot. It does not provide game-specific definitions or require the lifecycle module.
+
+## The pieces
+
+- A **registry** (`DataDriven<T>`) is a stable object owned by your application. It provides synchronous lookups and
+  a flow of published snapshots.
+- A **source** discovers raw resources. Folder, ZIP, and classpath sources are included.
+- A **pattern** matches a source-relative path and derives its namespaced key.
+- A **loader** turns one matching resource's bytes into a value of `T`.
+- A **reloader** (`DataSources`) combines declarations and coordinates complete replacements.
+
+Domain values do not implement a Twaddle interface. Create registries wherever your plugin owns them:
+
+```kotlin
+data class MessageDefinition(val message: String)
+
+val messages = DataDriven<MessageDefinition>()
+val reloader = DataSources {
+    messages via {
+        +("example:welcome" to MessageDefinition("Welcome!"))
+    }
+}
+
+val result = reloader.reloadBlocking()
+check(result.successful)
+println(messages[Key.key("example:welcome")])
+```
+
+## Load JSON files from a directory
+
+`CodecLoader` uses Minestom's codec and JSON transcoder. A definition's key comes from its path, not from its JSON
+contents.
+
+```kotlin
+val recipes = DataDriven<MyRecipe>()
+val recipeFiles = FolderSource(Path.of("./data"))
+val recipePattern = PackFolderPattern(prefix = "data").resource("recipes", ".json")
+
+val reloader = DataSources {
+    recipes via {
+        +recipeFiles(recipePattern, CodecLoader(MyRecipe.CODEC))
+    }
+}
+```
+
+The pack-folder convention is `<prefix>/<namespace>/<category>/<resource-path><extension>`. For example,
+`data/minecraft/recipes/crafting/test.json` maps to `minecraft:crafting/test`. The caller chooses the category;
+Twaddle does not require a pack metadata file like vanilla.
+
+`GlobPattern` is available for layouts that do not use that convention:
+
+```kotlin
+val tables = DataDriven.of<MyTable>()
+val tablePattern = GlobPattern("data/loot_tables/**/*.json", namespace = "example")
+```
+
+In a glob, `*` matches within a path segment and `**` may cross directories. A `**/` segment also matches zero
+directories. The literal directory prefix before the first wildcard and a literal extension suffix are removed when
+forming the key. Thus `data/loot_tables/rare/north.json` maps to `example:rare/north`.
+
+## Combine sources and override defaults
+
+Declarations load in order. A later declaration with the same key replaces the earlier value, and a diagnostic records
+both origins. `applyAll` has the same order and behavior as adding each source in a loop.
+
+```kotlin
+val sources: List<DataSource> = listOf(
+    ClasspathSource(MyPlugin::class),
+    FolderSource(Path.of("./data")),
+    ZipSource(Path.of("./extra.zip")),
+)
+
+val coordinator = DataSources {
+    tables via {
+        +sources.applyAll(tablePattern, CodecLoader(MyTable.CODEC))
+    }
+}
+```
+
+Classpath paths are rooted at the classpath root. The anchor selects the classloader. Some custom classloaders do not
+expose enumerable roots; in that case discovery reports the limitation rather than silently claiming the classpath is
+empty. Folder and ZIP resources are read and closed during each reload. Missing source roots are treated as empty.
+
+## Reload and observe
+
+Every reload builds all candidate registries before publishing any of them. A load or decode failure keeps all current
+snapshots. Each successful reload replaces the source-managed contents, so deleted files disappear while static DSL
+definitions are added again. Revisions increase on every successful publication, even when values are unchanged.
+
+```kotlin
+// In a coroutine:
+val result = coordinator.reload()
+launch {
+    tables.snapshots.collect { snapshot ->
+        println("Revision ${snapshot.revision}: ${snapshot.entries.size} tables")
+    }
+}
+```
+
+Java can configure static definitions through named builder methods and use the asynchronous or blocking reload APIs:
+
+```java
+DataDriven<String> javaRegistry = DataDriven.of();
+DataSources javaCoordinator = new DataSources(builder -> {
+    builder.addRegistry(javaRegistry, definitions ->
+        definitions.addStatic("example:welcome", "Welcome!")
+    );
+    return kotlin.Unit.INSTANCE;
+});
+javaCoordinator.reloadAsync().thenAccept(result -> {
+    if (result.getSuccessful()) System.out.println("Reload finished");
+});
+javaCoordinator.reloadBlocking();
+```
+
+`reloadAsync()` runs on the JVM common ForkJoin pool. `reloadBlocking()` blocks its caller. The suspend API propagates
+coroutine cancellation; ordinary source and decoding failures are returned as `ReloadResult` diagnostics.
+`StateFlow` immediately gives each new collector the latest snapshot, but slow collectors may skip intermediate
+revisions. Previously published snapshots remain immutable.
+
+Minestom event dispatch is opt-in, so this module remains usable before Minestom's global event handler is initialized.
+Pass an event node to `DataSources` to receive successful publication events synchronously on the publishing thread:
+
+```kotlin
+val coordinator = DataSources(MinecraftServer.getGlobalEventHandler()) {
+    tables via { +source(tablePattern, CodecLoader(MyTable.CODEC)) }
+}
+
+MinecraftServer.getGlobalEventHandler().listen<DataSourceReloadEvent> { event ->
+    if (event.registry === tables) println("Published ${event.snapshot.entries.size} tables")
+}
+```
+
+When one coordinator manages multiple registries, each registry publishes atomically, but publication across registries
+is sequential. A reader that separately queries several registries can briefly observe different revisions.

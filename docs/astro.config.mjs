@@ -58,6 +58,7 @@ export default defineConfig({
 						{ label: 'Stacked behaviour', slug: 'modules/stacked-behaviour' },
 						{ label: 'Block behaviour', slug: 'modules/block-behaviour' },
 						{ label: 'Random ticking', slug: 'modules/random-ticking' },
+						{ label: 'Data-driven definitions', slug: 'modules/data-driven' },
 					],
 				},
 			],
