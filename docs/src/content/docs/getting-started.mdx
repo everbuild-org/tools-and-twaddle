@@ -41,17 +41,18 @@ so your application must supply it. This source version builds against `net.mine
 All artifacts share the group `org.everbuild.twaddle` and the release version. Choose individual modules as needed;
 their published metadata resolves transitive dependencies.
 
-| Artifact ID | Purpose |
-| --- | --- |
-| `twaddle-lifecycle` | Application lifetime and coroutine ownership |
-| `twaddle-structured-logging` | Structured logging helpers |
-| `twaddle-common-minestom` | Minestom event and packet helpers |
-| `twaddle-common-block` | Shared block APIs |
-| `twaddle-stacked-behaviour` | Ordered rules across typed activities |
-| `twaddle-stacked-behaviour-block` | Stacked rules for Minestom block callbacks |
-| `twaddle-transfer-rules` | Inventory shift-click routing |
-| `twaddle-random-ticking` | Sampled block updates |
-| `twaddle-testing` | Testing utilities; use `testImplementation` |
+| Artifact ID                       | Purpose                                      |
+|-----------------------------------|----------------------------------------------|
+| `twaddle-lifecycle`               | Application lifetime and coroutine ownership |
+| `twaddle-structured-logging`      | Structured logging helpers                   |
+| `twaddle-common-minestom`         | Minestom event and packet helpers            |
+| `twaddle-common-block`            | Shared block APIs                            |
+| `twaddle-stacked-behaviour`       | Ordered rules across typed activities        |
+| `twaddle-stacked-behaviour-block` | Stacked rules for Minestom block callbacks   |
+| `twaddle-transfer-rules`          | Inventory shift-click routing                |
+| `twaddle-random-ticking`          | Sampled block updates                        |
+| `twaddle-data-driven`             | Load data files from any format you like     |
+| `twaddle-testing`                 | Testing utilities; use `testImplementation`  |
 
 For example, testing utilities use `testImplementation("org.everbuild.twaddle:twaddle-testing:0.1.0")`.
 
