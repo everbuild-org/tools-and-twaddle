@@ -14,10 +14,11 @@ class DataSourcesJavaTest {
     @Test
     void javaCanCreateARegistryConfigureStaticDefinitionsAndReloadAsync() throws Exception {
         DataDriven<String> registry = new DataDriven<>();
-        DataSources sources = new DataSources(builder -> {
-            builder.addRegistry(registry, definitions -> definitions.addStatic("java:example", "loaded"));
-            return kotlin.Unit.INSTANCE;
-        });
+        DataSources sources = DataSources.create(builder ->
+                builder.addRegistry(registry, definitions ->
+                        definitions.addStatic("java:example", "loaded")
+                )
+        );
 
         ReloadResult result = sources.reloadAsync().toCompletableFuture().get(5, TimeUnit.SECONDS);
 

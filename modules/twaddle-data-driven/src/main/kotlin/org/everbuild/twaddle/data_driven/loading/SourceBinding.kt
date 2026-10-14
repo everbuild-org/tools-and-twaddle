@@ -8,7 +8,7 @@ class SourceBinding<T> internal constructor(internal val declarations: List<Boun
     operator fun plus(other: SourceBinding<T>): SourceBinding<T> = SourceBinding(declarations + other.declarations)
 }
 
-internal data class BoundSource<T>(val source: DataSource, val pattern: ResourcePattern, val loader: DataLoader<T>)
+internal data class BoundSource<T>(val source: DataSource, val pattern: ResourcePattern, val loader: DataLoader<T>) : RegistryDeclaration<T>
 
 operator fun <T> DataSource.invoke(pattern: ResourcePattern, loader: DataLoader<T>): SourceBinding<T> =
     SourceBinding(listOf(BoundSource(this, pattern, loader)))

@@ -16,6 +16,7 @@ import org.everbuild.twaddle.data_driven.loading.BoundSource
 import org.everbuild.twaddle.data_driven.DataDriven
 import org.everbuild.twaddle.data_driven.DataSnapshot
 import org.everbuild.twaddle.data_driven.loading.Definition
+import org.everbuild.twaddle.data_driven.loading.RegistryDeclaration
 import kotlin.collections.plusAssign
 
 /** Coordinates source replacement for the registries declared in [block]. */
@@ -68,11 +69,21 @@ class DataSources @JvmOverloads constructor(
 
     /** Blocks the calling thread until the serialized reload completes. */
     fun reloadBlocking(): ReloadResult = runBlocking { reload() }
+
+    companion object {
+        /** Java-friendly factory that accepts a void-returning [java.util.function.Consumer] configuration lambda. */
+        @JvmStatic
+        @JvmOverloads
+        fun create(
+            configure: java.util.function.Consumer<DataSourcesBuilder>,
+            eventNode: EventNode<in DataSourceReloadEvent>? = null,
+        ): DataSources = DataSources(eventNode) { configure.accept(this) }
+    }
 }
 
 private data class Candidate(val entries: Map<Key, Any>)
 
-private class RegistryBinding<T>(val registry: DataDriven<T>, private val declarations: List<Any>) {
+private class RegistryBinding<T>(val registry: DataDriven<T>, private val declarations: List<RegistryDeclaration<*>>) {
     @Suppress("UNCHECKED_CAST")
     fun load(diagnostics: MutableList<ReloadDiagnostic>): Candidate {
         val entries = LinkedHashMap<Key, Any>()
@@ -84,6 +95,8 @@ private class RegistryBinding<T>(val registry: DataDriven<T>, private val declar
                     val source = declaration as BoundSource<T>
                     val resources = try {
                         source.source.discover()
+                    } catch (cancelled: CancellationException) {
+                        throw cancelled
                     } catch (failure: Exception) {
                         throw IOException("Failed discovering resources from ${source.source.description}", failure)
                     }
@@ -91,13 +104,14 @@ private class RegistryBinding<T>(val registry: DataDriven<T>, private val declar
                         val key = source.pattern.key(resource.path) ?: continue
                         val value = try {
                             source.loader.load(resource)
+                        } catch (cancelled: CancellationException) {
+                            throw cancelled
                         } catch (failure: Exception) {
                             throw IOException("Failed loading '$key' from ${resource.origin}", failure)
                         }
                         put(key, value, resource.origin, entries, provenance, diagnostics)
                     }
                 }
-                else -> error("Unknown data source declaration: ${declaration::class}")
             }
         }
         return Candidate(entries)

@@ -4,6 +4,7 @@ import net.kyori.adventure.key.Key
 import org.everbuild.twaddle.data_driven.loading.DataLoader
 import org.everbuild.twaddle.data_driven.resource.DataSource
 import org.everbuild.twaddle.data_driven.loading.Definition
+import org.everbuild.twaddle.data_driven.loading.RegistryDeclaration
 import org.everbuild.twaddle.data_driven.pattern.ResourcePattern
 import org.everbuild.twaddle.data_driven.loading.SourceBinding
 import org.everbuild.twaddle.data_driven.loading.classpath
@@ -16,7 +17,7 @@ import kotlin.reflect.KClass
 
 @DataSourcesDsl
 class RegistrySources<T> internal constructor() {
-    internal val declarations = mutableListOf<Any>()
+    internal val declarations = mutableListOf<RegistryDeclaration<T>>()
 
     operator fun Pair<String, T>.unaryPlus() {
         addStatic(first, second)

@@ -5,6 +5,7 @@ import java.net.JarURLConnection
 import java.net.URI
 import java.net.URL
 import java.net.URLClassLoader
+import java.io.File
 import java.nio.file.Files
 import java.nio.file.Path
 import java.util.jar.JarFile
@@ -19,11 +20,16 @@ class ClasspathSource(anchor: KClass<*>) : DataSource {
     override fun discover(): List<RawResource> {
         val roots = linkedMapOf<String, URL>()
         val loader = classLoader
+        runCatching { anchorClass.protectionDomain?.codeSource?.location }
+            .getOrNull()
+            ?.let { addRoot(roots, it) }
         if (loader is URLClassLoader) {
             loader.urLs.forEach { addRoot(roots, it) }
         }
-        // Root enumeration is only a fallback for non-URL classloaders. JAR scanning below handles
-        // packaged resources directly; classloader visibility can still hide non-enumerable roots.
+        if (loader === ClassLoader.getSystemClassLoader()) {
+            addSystemClasspathRoots(roots)
+        }
+        // Resource-root enumeration supplements code-source and application classpath roots.
         try {
             loader.getResources("").asSequence().forEach { addRoot(roots, it) }
         } catch (failure: IOException) {
@@ -39,7 +45,9 @@ class ClasspathSource(anchor: KClass<*>) : DataSource {
                     if (!Files.isDirectory(root)) continue
                     FolderSource(root).discover().forEach { found ->
                         val visible = loader.getResource(found.path) ?: return@forEach
-                        if (visible.protocol == "file") resources += found.copy(origin = "$description:${visible}")
+                        if (sameFile(visible, root.resolve(found.path))) {
+                            resources += found.copy(origin = "$description:${visible}")
+                        }
                     }
                 }
                 "jar" -> {
@@ -68,6 +76,23 @@ class ClasspathSource(anchor: KClass<*>) : DataSource {
         return resources.distinctBy { it.path to it.origin }.sortedBy { it.path }
     }
 
+    private fun addSystemClasspathRoots(roots: MutableMap<String, URL>) {
+        val classpath = System.getProperty("java.class.path") ?: return
+        for (entry in classpath.split(File.pathSeparatorChar).filter(String::isNotBlank)) {
+            if (entry.endsWith("*") && Files.isDirectory(Path.of(entry.dropLast(1)))) {
+                Files.list(Path.of(entry.dropLast(1))).use { paths ->
+                    paths.filter { Files.isRegularFile(it) && it.fileName.toString().endsWith(".jar", ignoreCase = true) }
+                        .sorted()
+                        .forEach { path -> runCatching { path.toUri().toURL() }.getOrNull()?.let { addRoot(roots, it) } }
+                }
+            } else {
+                runCatching { Path.of(entry).toUri().toURL() }
+                    .getOrNull()
+                    ?.let { addRoot(roots, it) }
+            }
+        }
+    }
+
     private fun addRoot(roots: MutableMap<String, URL>, url: URL) {
         when (url.protocol) {
             "file" -> {
@@ -92,5 +117,10 @@ class ClasspathSource(anchor: KClass<*>) : DataSource {
     private fun sameJar(resource: URL, jarPath: Path): Boolean = runCatching {
         val connection = resource.openConnection() as JarURLConnection
         Path.of(connection.jarFileURL.toURI()).toAbsolutePath().normalize() == jarPath.toAbsolutePath().normalize()
+    }.getOrDefault(false)
+
+    private fun sameFile(resource: URL, file: Path): Boolean = runCatching {
+        resource.protocol == "file" &&
+            Path.of(resource.toURI()).toRealPath() == file.toRealPath()
     }.getOrDefault(false)
 }
