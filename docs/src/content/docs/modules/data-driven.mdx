@@ -56,7 +56,7 @@ Twaddle does not require a pack metadata file like vanilla.
 `GlobPattern` is available for layouts that do not use that convention:
 
 ```kotlin
-val tables = DataDriven.of<MyTable>()
+val tables = DataDriven<MyTable>()
 val tablePattern = GlobPattern("data/loot_tables/**/*.json", namespace = "example")
 ```
 
@@ -83,9 +83,12 @@ val coordinator = DataSources {
 }
 ```
 
-Classpath paths are rooted at the classpath root. The anchor selects the classloader. Some custom classloaders do not
-expose enumerable roots; in that case discovery reports the limitation rather than silently claiming the classpath is
-empty. Folder and ZIP resources are read and closed during each reload. Missing source roots are treated as empty.
+Classpath paths are rooted at the classpath root. The anchor selects the classloader. Discovery checks the anchor's code
+source, URL classloader roots, and the standard application classpath where available, then verifies that each resource
+is visible through the selected classloader. Opaque custom classloaders may not expose enumerable roots; discovery
+reports that limitation rather than silently claiming the classpath is empty. Folder and ZIP resources are read and
+closed during each reload. Missing source roots are treated as empty. Pack-folder categories may contain nested path
+segments, such as `worldgen/biome`.
 
 ## Reload and observe
 
@@ -106,12 +109,11 @@ launch {
 Java can configure static definitions through named builder methods and use the asynchronous or blocking reload APIs:
 
 ```java
-DataDriven<String> javaRegistry = DataDriven.of();
-DataSources javaCoordinator = new DataSources(builder -> {
+DataDriven<String> javaRegistry = new DataDriven<>();
+DataSources javaCoordinator = DataSources.create(builder -> {
     builder.addRegistry(javaRegistry, definitions ->
         definitions.addStatic("example:welcome", "Welcome!")
     );
-    return kotlin.Unit.INSTANCE;
 });
 javaCoordinator.reloadAsync().thenAccept(result -> {
     if (result.getSuccessful()) System.out.println("Reload finished");

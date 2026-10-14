@@ -1,11 +1,12 @@
 package org.everbuild.twaddle.data_driven.source
 
 import org.everbuild.twaddle.data_driven.DataDriven
+import org.everbuild.twaddle.data_driven.loading.RegistryDeclaration
 import java.util.function.Consumer
 
 @DataSourcesDsl
 class DataSourcesBuilder {
-    internal val targets = LinkedHashMap<DataDriven<*>, MutableList<Any>>()
+    internal val targets = LinkedHashMap<DataDriven<*>, MutableList<RegistryDeclaration<*>>>()
 
     infix fun <T> DataDriven<T>.via(block: RegistrySources<T>.() -> Unit) {
         val declarations = RegistrySources<T>().apply(block).declarations

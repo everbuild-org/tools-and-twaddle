@@ -24,8 +24,10 @@ class PackFolderPattern(prefix: String = "data") {
                 if (!normalized.startsWith(requiredPrefix) || !normalized.endsWith(normalizedExtension)) return null
                 val remainder = normalized.removePrefix(requiredPrefix).removeSuffix(normalizedExtension)
                 val segments = remainder.split('/')
-                if (segments.size < 3 || segments[1] != category) return null
-                return parseKeyOrNull("${segments[0]}:${segments.drop(2).joinToString("/" )}")
+                val categorySegments = category.split('/')
+                if (segments.size <= categorySegments.size + 1) return null
+                if (segments.subList(1, categorySegments.size + 1) != categorySegments) return null
+                return parseKeyOrNull("${segments[0]}:${segments.drop(categorySegments.size + 1).joinToString("/")}")
             }
         }
     }

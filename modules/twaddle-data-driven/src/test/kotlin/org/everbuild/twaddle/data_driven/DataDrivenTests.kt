@@ -5,6 +5,7 @@ import io.kotest.assertions.throwables.shouldThrow
 import io.kotest.matchers.collections.shouldContain
 import io.kotest.matchers.shouldBe
 import kotlinx.coroutines.async
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.runBlocking
 import net.kyori.adventure.key.Key
@@ -33,6 +34,7 @@ import java.util.zip.ZipOutputStream
 
 private data class TestDefinition(val value: String)
 private object TestResourceAnchor
+private class ChildClasspathAnchor
 
 private val stringLoader = DataLoader { resource -> TestDefinition(resource.text()) }
 private val testKey = Key.key("test:entry")
@@ -89,6 +91,9 @@ val DataDrivenTests by testSuite {
         pattern.key("data/minecraft/recipes/crafting/test.json") shouldBe Key.key("minecraft:crafting/test")
         pattern.key("data/asorda/loot_tables/no.json") shouldBe null
         pattern.key("data/Bad Namespace/recipes/a.json") shouldBe null
+        val nestedCategory = PackFolderPattern("data").resource("worldgen/biome", ".json")
+        nestedCategory.key("data/minecraft/worldgen/biome/nether/wastes.json") shouldBe Key.key("minecraft:nether/wastes")
+        nestedCategory.key("data/minecraft/worldgen/feature/nether/wastes.json") shouldBe null
     }
 
     test("Folder and ZIP sources read normalized nested paths and report missing roots as empty") {
@@ -129,6 +134,12 @@ val DataDrivenTests by testSuite {
         found.map { it.path } shouldContain "data-driven/fixture.txt"
         found.single { it.path == "data-driven/fixture.txt" }.text() shouldBe "classpath fixture\n"
 
+        val appClasspathResource = "net/minestom/server/codec/Codec.class"
+        check(ClassLoader.getSystemResource(appClasspathResource) != null) {
+            "Minestom codec class should be visible from the standard application classloader"
+        }
+        ClasspathSource(String::class).discover().map { it.path } shouldContain appClasspathResource
+
         val temp = tempDirectory()
         try {
             val archive = temp.resolve("plugin.jar")
@@ -150,6 +161,27 @@ val DataDrivenTests by testSuite {
             }
         } finally {
             temp.deleteTree()
+        }
+
+        val layered = tempDirectory()
+        try {
+            val parentRoot = Files.createDirectories(layered.resolve("parent"))
+            val childRoot = Files.createDirectories(layered.resolve("child"))
+            parentRoot.write("shadowed.txt", "parent bytes")
+            childRoot.write("shadowed.txt", "child bytes")
+            val anchorName = ChildClasspathAnchor::class.java.name.replace('.', '/')
+            val anchorBytes = ChildClasspathAnchor::class.java.getResourceAsStream("/${anchorName}.class")!!.use { it.readBytes() }
+            childRoot.resolve("$anchorName.class").also { Files.createDirectories(it.parent); Files.write(it, anchorBytes) }
+            URLClassLoader(arrayOf(parentRoot.toUri().toURL()), ClassLoader.getPlatformClassLoader()).use { parent ->
+                URLClassLoader(arrayOf(childRoot.toUri().toURL()), parent).use { child ->
+                    val anchor = Class.forName(ChildClasspathAnchor::class.java.name, true, child).kotlin
+                    val resource = ClasspathSource(anchor).discover().single { it.path == "shadowed.txt" }
+                    resource.text() shouldBe "parent bytes"
+                    resource.origin.contains("parent") shouldBe true
+                }
+            }
+        } finally {
+            layered.deleteTree()
         }
     }
 
@@ -226,6 +258,33 @@ val DataDrivenTests by testSuite {
         registry.snapshot() shouldBe oldSnapshot
         alsoRegistry.snapshot() shouldBe oldAlsoSnapshot
         registry.snapshots.first() shouldBe oldSnapshot
+    }
+
+    test("Cancellation from a source or loader propagates and preserves current snapshots") {
+        runBlocking {
+            for (cancelAtLoader in listOf(false, true)) {
+                val registry = DataDriven<String>()
+                DataSources { registry via { +("test:current" to "current") } }.reloadBlocking().successful shouldBe true
+                val source = memorySource("memory:cancellation") {
+                    if (!cancelAtLoader) throw CancellationException("source cancelled")
+                    listOf(RawResource("entry.json", "memory:cancellation", "{}".toByteArray()))
+                }
+                val loader = DataLoader<String> {
+                    if (cancelAtLoader) throw CancellationException("loader cancelled")
+                    it.text()
+                }
+                val coordinator = DataSources {
+                    registry via { +source(GlobPattern("*.json", "test"), loader) }
+                }
+                try {
+                    coordinator.reload()
+                    error("Expected cancellation")
+                } catch (_: CancellationException) {
+                    registry.snapshot().entries shouldBe mapOf(Key.key("test:current") to "current")
+                    registry.snapshot().revision shouldBe 1L
+                }
+            }
+        }
     }
 
     test("Multiple registries are prepared before publication and concurrent reloads serialize") {
