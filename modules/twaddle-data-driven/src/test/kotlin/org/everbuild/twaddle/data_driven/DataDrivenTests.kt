@@ -14,7 +14,11 @@ import net.minestom.server.event.EventNode
 import org.everbuild.twaddle.data_driven.loader.CodecLoader
 import org.everbuild.twaddle.data_driven.loading.DataLoader
 import org.everbuild.twaddle.data_driven.loading.applyAll
+import org.everbuild.twaddle.data_driven.loading.bindDataSource
+import org.everbuild.twaddle.data_driven.loading.classpath
+import org.everbuild.twaddle.data_driven.loading.folder
 import org.everbuild.twaddle.data_driven.loading.invoke
+import org.everbuild.twaddle.data_driven.loading.zip
 import org.everbuild.twaddle.data_driven.pattern.GlobPattern
 import org.everbuild.twaddle.data_driven.pattern.PackFolderPattern
 import org.everbuild.twaddle.data_driven.resource.ClasspathSource
@@ -24,6 +28,7 @@ import org.everbuild.twaddle.data_driven.resource.RawResource
 import org.everbuild.twaddle.data_driven.resource.ZipSource
 import org.everbuild.twaddle.data_driven.source.DataSourceReloadEvent
 import org.everbuild.twaddle.data_driven.source.DataSources
+import org.everbuild.twaddle.data_driven.source.ReloadResult
 import java.io.IOException
 import java.nio.file.Files
 import java.nio.file.Path
@@ -56,6 +61,24 @@ private fun memorySource(description: String, discover: () -> List<RawResource>)
 
 @Suppress("RedundantSamConstructor")
 val DataDrivenTests by testSuite {
+    test("Raw resources compare byte contents and reload results expose both success names") {
+        val first = RawResource("entry.txt", "memory:one", byteArrayOf(1, 2, 3))
+        val same = RawResource("entry.txt", "memory:one", byteArrayOf(1, 2, 3))
+        first.text() shouldBe "\u0001\u0002\u0003"
+        first shouldBe same
+        first.hashCode() shouldBe same.hashCode()
+        (first == first) shouldBe true
+        first.equals(null) shouldBe false
+        first.equals("entry.txt") shouldBe false
+        (first == first.copy(path = "other.txt")) shouldBe false
+        (first == first.copy(origin = "memory:two")) shouldBe false
+        (first == first.copy(contents = byteArrayOf(3, 2, 1))) shouldBe false
+
+        ReloadResult.success().succeeded shouldBe true
+        ReloadResult.failure(emptyList()).succeeded shouldBe false
+        ReloadResult.failure(emptyList()).successful shouldBe false
+    }
+
     test("Registries publish immutable replacements and retain old snapshots") {
         val registry = DataDriven<String>()
         registry.snapshot().entries shouldBe emptyMap()
@@ -77,6 +100,22 @@ val DataDrivenTests by testSuite {
         independent[testKey] shouldBe "independent"
     }
 
+    test("Repeated registry DSL blocks accumulate declarations and static keys are validated") {
+        val registry = DataDriven<String>()
+        val coordinator = DataSources {
+            registry via { addStatic("test:first", "first") }
+            registry via { +("test:second" to "second") }
+        }
+        coordinator.reloadBlocking().successful shouldBe true
+        registry.snapshot().entries shouldBe mapOf(
+            Key.key("test:first") to "first",
+            Key.key("test:second") to "second",
+        )
+        shouldThrow<IllegalArgumentException> {
+            DataSources { registry via { addStatic("Invalid Namespace:key", "bad") } }
+        }
+    }
+
     test("Glob and pack folder patterns map matching paths to validated namespaced keys") {
         val glob = GlobPattern("data/loot_tables/**/*.json", "asorda")
         glob.key("data/loot_tables/example.json") shouldBe Key.key("asorda:example")
@@ -94,6 +133,30 @@ val DataDrivenTests by testSuite {
         val nestedCategory = PackFolderPattern("data").resource("worldgen/biome", ".json")
         nestedCategory.key("data/minecraft/worldgen/biome/nether/wastes.json") shouldBe Key.key("minecraft:nether/wastes")
         nestedCategory.key("data/minecraft/worldgen/feature/nether/wastes.json") shouldBe null
+    }
+
+    test("Patterns reject malformed configuration and ignore invalid resource paths") {
+        shouldThrow<IllegalArgumentException> { GlobPattern("", "test") }
+        shouldThrow<IllegalArgumentException> { GlobPattern("/absolute/*.json", "test") }
+        shouldThrow<IllegalArgumentException> { GlobPattern("data\\\\*.json", "test") }
+        shouldThrow<IllegalArgumentException> { GlobPattern("*.json", " ") }
+        shouldThrow<IllegalArgumentException> { GlobPattern("[", "test") }
+        val glob = GlobPattern("data/*.json", "test")
+        glob.key("") shouldBe null
+        glob.key("/data/a.json") shouldBe null
+        glob.key("data/../a.json") shouldBe null
+        glob.key("data/a\\\\.json") shouldBe null
+
+        shouldThrow<IllegalArgumentException> { PackFolderPattern("") }
+        shouldThrow<IllegalArgumentException> { PackFolderPattern("../data") }
+        shouldThrow<IllegalArgumentException> { PackFolderPattern("data//assets") }
+        val pack = PackFolderPattern().resource("recipes", ".json")
+        pack.key("data//test/recipes/item.json") shouldBe null
+        pack.key("data/test/recipes/../item.json") shouldBe null
+        pack.key("data\\\\test/recipes/item.json") shouldBe null
+        shouldThrow<IllegalArgumentException> { PackFolderPattern().resource("", ".json") }
+        shouldThrow<IllegalArgumentException> { PackFolderPattern().resource("../recipes", ".json") }
+        shouldThrow<IllegalArgumentException> { PackFolderPattern().resource("recipes", "json/path") }
     }
 
     test("Folder and ZIP sources read normalized nested paths and report missing roots as empty") {
@@ -126,6 +189,21 @@ val DataDrivenTests by testSuite {
             shouldThrow<IOException> { ZipSource(badArchive).discover() }
         } finally {
             root.deleteTree()
+        }
+    }
+
+    test("Folder source rejects a non-directory root and symlinks escaping the root") {
+        val parent = tempDirectory()
+        try {
+            val fileRoot = parent.write("not-a-directory", "file")
+            shouldThrow<IllegalArgumentException> { FolderSource(fileRoot).discover() }
+
+            val root = Files.createDirectories(parent.resolve("root"))
+            val outside = parent.write("outside.txt", "outside")
+            Files.createSymbolicLink(root.resolve("escape.txt"), outside)
+            shouldThrow<IllegalArgumentException> { FolderSource(root).discover() }
+        } finally {
+            parent.deleteTree()
         }
     }
 
@@ -248,6 +326,65 @@ val DataDrivenTests by testSuite {
         }
     }
 
+    test("Named and shorthand source bindings support every source kind and preserve composition order") {
+        val root = tempDirectory()
+        try {
+            val folderPath = Files.createDirectories(root.resolve("folder-source"))
+            folderPath.write("folder/item.json", "folder value")
+            val archive = root.resolve("source.zip")
+            ZipOutputStream(Files.newOutputStream(archive)).use { zip ->
+                zip.putNextEntry(ZipEntry("archive/item.json"))
+                zip.write("archive value".toByteArray())
+                zip.closeEntry()
+            }
+
+            val memorySources = listOf("first", "second").map { label ->
+                memorySource("memory:$label") {
+                    listOf(RawResource("$label.txt", "memory:$label", label.toByteArray()))
+                }
+            }
+            val composed = bindDataSource(memorySources[0], GlobPattern("*.txt", "composed"), DataLoader { it.text() }) +
+                bindDataSource(memorySources[1], GlobPattern("*.txt", "composed"), DataLoader { it.text() })
+
+            val namedRegistry = DataDriven<String>()
+            val shortcutRegistry = DataDriven<String>()
+            val classpathPattern = GlobPattern("data-driven/*.txt", "classpath")
+            val folderPattern = GlobPattern("folder/*.json", "folder")
+            val archivePattern = GlobPattern("archive/*.json", "archive")
+            val textLoader = DataLoader { it.text() }
+            val configured = DataSources {
+                namedRegistry via {
+                    +composed
+                    addSource(memorySource("memory:named") {
+                        listOf(RawResource("named.txt", "memory:named", "named".toByteArray()))
+                    }, GlobPattern("*.txt", "named"), textLoader)
+                    addClasspath(classpathPattern, TestResourceAnchor::class, textLoader)
+                    addFolder(folderPattern, folderPath, textLoader)
+                    addZip(archivePattern, archive, textLoader)
+                }
+                shortcutRegistry via {
+                    +classpath(classpathPattern, TestResourceAnchor::class, textLoader)
+                    +folder(folderPattern, folderPath, textLoader)
+                    +zip(archivePattern, archive, textLoader)
+                }
+            }
+            configured.reloadBlocking().successful shouldBe true
+            namedRegistry[Key.key("composed:first")] shouldBe "first"
+            namedRegistry[Key.key("composed:second")] shouldBe "second"
+            namedRegistry[Key.key("named:named")] shouldBe "named"
+            namedRegistry[Key.key("classpath:fixture")] shouldBe "classpath fixture\n"
+            namedRegistry[Key.key("folder:item")] shouldBe "folder value"
+            namedRegistry[Key.key("archive:item")] shouldBe "archive value"
+            shortcutRegistry.snapshot().entries shouldBe mapOf(
+                Key.key("classpath:fixture") to "classpath fixture\n",
+                Key.key("folder:item") to "folder value",
+                Key.key("archive:item") to "archive value",
+            )
+        } finally {
+            root.deleteTree()
+        }
+    }
+
     test("Decode errors preserve every previous registry snapshot and flow state") {
         val registry = DataDriven<String>()
         val alsoRegistry = DataDriven<String>()
@@ -273,6 +410,21 @@ val DataDrivenTests by testSuite {
         registry.snapshot() shouldBe oldSnapshot
         alsoRegistry.snapshot() shouldBe oldAlsoSnapshot
         registry.snapshots.first() shouldBe oldSnapshot
+    }
+
+    test("Discovery errors become diagnostics and preserve the previous snapshot") {
+        val registry = DataDriven<String>()
+        DataSources { registry via { +("test:old" to "old") } }.reloadBlocking().successful shouldBe true
+        val oldSnapshot = registry.snapshot()
+        val source = memorySource("memory:unavailable") { throw IOException("source unavailable") }
+        val result = DataSources {
+            registry via { +source(GlobPattern("*.json", "test"), DataLoader { it.text() }) }
+        }.reloadBlocking()
+
+        result.successful shouldBe false
+        result.diagnostics.single().message.contains("memory:unavailable") shouldBe true
+        result.diagnostics.single().cause!!.message!!.contains("memory:unavailable") shouldBe true
+        registry.snapshot() shouldBe oldSnapshot
     }
 
     test("Cancellation from a source or loader propagates and preserves current snapshots") {
@@ -337,6 +489,16 @@ val DataDrivenTests by testSuite {
         observed!!.registry shouldBe registry
         (observed.snapshot === snapshot) shouldBe true
         registry.snapshot().entries[testKey] shouldBe "loaded"
+
+        val listenerFailureNode = EventNode.all("data-driven-failing-listener-test")
+        listenerFailureNode.addListener(DataSourceReloadEvent::class.java) { error("listener failed") }
+        val published = DataDriven<String>()
+        val listenerFailure = DataSources(listenerFailureNode) {
+            published via { +("test:published" to "published") }
+        }.reloadBlocking()
+        listenerFailure.successful shouldBe true
+        listenerFailure.diagnostics.single().message shouldBe "Snapshot published, but a reload event listener failed"
+        published[Key.key("test:published")] shouldBe "published"
     }
 
     test("CodecLoader uses Minestom JSON codec diagnostics") {
@@ -345,6 +507,9 @@ val DataDrivenTests by testSuite {
         shouldThrow<IllegalArgumentException> {
             CodecLoader(Codec.INT).load(resource)
         }.message!!.contains("memory:text") shouldBe true
+        val malformedJson = RawResource("broken.json", "memory:broken", "{".toByteArray())
+        shouldThrow<IllegalArgumentException> { CodecLoader(Codec.STRING).load(malformedJson) }
+            .message!!.contains("memory:broken") shouldBe true
     }
 
     test("applyAll preserves source order and matches an explicit source loop") {
