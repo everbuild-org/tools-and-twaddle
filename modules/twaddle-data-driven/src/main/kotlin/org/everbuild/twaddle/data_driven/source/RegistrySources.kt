@@ -16,7 +16,7 @@ import kotlin.collections.plusAssign
 import kotlin.reflect.KClass
 
 @DataSourcesDsl
-class RegistrySources<T> internal constructor() {
+class RegistrySources<T : Any> internal constructor() {
     internal val declarations = mutableListOf<RegistryDeclaration<T>>()
 
     operator fun Pair<String, T>.unaryPlus() {

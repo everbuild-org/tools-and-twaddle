@@ -7,7 +7,7 @@ import net.kyori.adventure.key.Key
 import java.util.Collections
 
 /** A stable, application-owned registry whose contents are replaced as complete snapshots. */
-class DataDriven<T> {
+class DataDriven<T : Any> {
     private val state = MutableStateFlow(DataSnapshot<T>(emptyMap(), 0))
 
     /** Latest state. Collectors receive the current snapshot immediately and may skip intermediate ones. */

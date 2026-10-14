@@ -180,6 +180,21 @@ val DataDrivenTests by testSuite {
                     resource.origin.contains("parent") shouldBe true
                 }
             }
+
+            val parentArchive = layered.resolve("parent.jar")
+            ZipOutputStream(Files.newOutputStream(parentArchive)).use { zip ->
+                zip.putNextEntry(ZipEntry("shadowed.txt"))
+                zip.write("parent JAR bytes".toByteArray())
+                zip.closeEntry()
+            }
+            URLClassLoader(arrayOf(parentArchive.toUri().toURL()), ClassLoader.getPlatformClassLoader()).use { parent ->
+                URLClassLoader(arrayOf(childRoot.toUri().toURL()), parent).use { child ->
+                    val anchor = Class.forName(ChildClasspathAnchor::class.java.name, true, child).kotlin
+                    val resource = ClasspathSource(anchor).discover().single { it.path == "shadowed.txt" }
+                    resource.text() shouldBe "parent JAR bytes"
+                    resource.origin.contains("parent.jar") shouldBe true
+                }
+            }
         } finally {
             layered.deleteTree()
         }

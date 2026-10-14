@@ -83,7 +83,7 @@ class DataSources @JvmOverloads constructor(
 
 private data class Candidate(val entries: Map<Key, Any>)
 
-private class RegistryBinding<T>(val registry: DataDriven<T>, private val declarations: List<RegistryDeclaration<*>>) {
+private class RegistryBinding<T : Any>(val registry: DataDriven<T>, private val declarations: List<RegistryDeclaration<*>>) {
     @Suppress("UNCHECKED_CAST")
     fun load(diagnostics: MutableList<ReloadDiagnostic>): Candidate {
         val entries = LinkedHashMap<Key, Any>()
@@ -127,7 +127,7 @@ private class RegistryBinding<T>(val registry: DataDriven<T>, private val declar
     ) {
         val previous = provenance.put(key, origin)
         if (previous != null) diagnostics += ReloadDiagnostic("'$key' from $origin overrides $previous", origin, key)
-        entries[key] = value as Any
+        entries[key] = value
     }
 
     @Suppress("UNCHECKED_CAST")
