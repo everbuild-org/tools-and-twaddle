@@ -8,13 +8,13 @@ import java.util.function.Consumer
 class DataSourcesBuilder {
     internal val targets = LinkedHashMap<DataDriven<*>, MutableList<RegistryDeclaration<*>>>()
 
-    infix fun <T> DataDriven<T>.via(block: RegistrySources<T>.() -> Unit) {
+    infix fun <T : Any> DataDriven<T>.via(block: RegistrySources<T>.() -> Unit) {
         val declarations = RegistrySources<T>().apply(block).declarations
         targets.getOrPut(this) { mutableListOf() }.addAll(declarations)
     }
 
     /** Java-friendly alternative to the Kotlin `registry via { ... }` DSL. */
-    fun <T> addRegistry(registry: DataDriven<T>, configure: Consumer<RegistrySources<T>>) {
+    fun <T : Any> addRegistry(registry: DataDriven<T>, configure: Consumer<RegistrySources<T>>) {
         val declarations = RegistrySources<T>().also(configure::accept).declarations
         targets.getOrPut(registry) { mutableListOf() }.addAll(declarations)
     }

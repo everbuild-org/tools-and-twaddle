@@ -8,14 +8,13 @@ import java.nio.file.Path
 import kotlin.reflect.KClass
 
 /** Convenience declaration for an exploded classpath or JAR source. */
-fun <T> classpath(pattern: ResourcePattern, anchor: KClass<*>, loader: DataLoader<T>): SourceBinding<T> =
+fun <T : Any> classpath(pattern: ResourcePattern, anchor: KClass<*>, loader: DataLoader<T>): SourceBinding<T> =
     ClasspathSource(anchor)(pattern, loader)
 
 /** Convenience declaration for a filesystem directory. */
-fun <T> folder(pattern: ResourcePattern, path: Path, loader: DataLoader<T>): SourceBinding<T> =
+fun <T : Any> folder(pattern: ResourcePattern, path: Path, loader: DataLoader<T>): SourceBinding<T> =
     FolderSource(path)(pattern, loader)
 
 /** Convenience declaration for a ZIP archive. */
-fun <T> zip(pattern: ResourcePattern, path: Path, loader: DataLoader<T>): SourceBinding<T> =
+fun <T : Any> zip(pattern: ResourcePattern, path: Path, loader: DataLoader<T>): SourceBinding<T> =
     ZipSource(path)(pattern, loader)
-

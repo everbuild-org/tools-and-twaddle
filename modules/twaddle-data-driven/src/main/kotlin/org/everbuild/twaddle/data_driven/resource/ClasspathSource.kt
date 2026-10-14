@@ -23,11 +23,15 @@ class ClasspathSource(anchor: KClass<*>) : DataSource {
         runCatching { anchorClass.protectionDomain?.codeSource?.location }
             .getOrNull()
             ?.let { addRoot(roots, it) }
-        if (loader is URLClassLoader) {
-            loader.urLs.forEach { addRoot(roots, it) }
-        }
-        if (loader === ClassLoader.getSystemClassLoader()) {
-            addSystemClasspathRoots(roots)
+        var currentLoader: ClassLoader? = loader
+        while (currentLoader != null) {
+            if (currentLoader is URLClassLoader) {
+                currentLoader.urLs.forEach { addRoot(roots, it) }
+            }
+            if (currentLoader === ClassLoader.getSystemClassLoader()) {
+                addSystemClasspathRoots(roots)
+            }
+            currentLoader = currentLoader.parent
         }
         // Resource-root enumeration supplements code-source and application classpath roots.
         try {
