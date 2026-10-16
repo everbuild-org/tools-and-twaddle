@@ -9,5 +9,5 @@ dependencies {
     compileOnly(libs.minestom)
     api(projects.modules.twaddleStackedBehaviour)
     api(projects.common.twaddleCommonBlock)
-    testImplementation(projects.common.twaddleTesting)
+    testImplementation(projects.testing.twaddleTesting)
 }

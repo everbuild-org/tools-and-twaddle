@@ -60,6 +60,31 @@ val tables = DataDriven<MyTable>()
 val tablePattern = GlobPattern("data/loot_tables/**/*.json", namespace = "example")
 ```
 
+## Test codec fixtures
+
+The `twaddle-data-driven-testing` artifact provides `codecFixtures`, which discovers matching resources and registers
+one TestBalloon test per file. Decoding happens inside each test, so a malformed fixture is reported under its own
+resource key. Add it with `testImplementation` alongside the module whose codec you are testing:
+
+```kotlin
+dependencies {
+    testImplementation("org.everbuild.twaddle:twaddle-data-driven-testing:0.1.0")
+}
+```
+
+```kotlin
+val ProviderCodecTests by testSuite {
+    codecFixtures(
+        name = "context integer providers",
+        source = ClasspathSource(FixtureAnchor::class),
+        pattern = PackFolderPattern().resource("worldgen/context_int_provider", ".json"),
+        codec = providerCodec,
+    )
+}
+```
+
+The helper fails suite registration if the pattern matches no resources, avoiding an accidental empty fixture suite.
+
 In a glob, `*` matches within a path segment and `**` may cross directories. A `**/` segment also matches zero
 directories. The literal directory prefix before the first wildcard and a literal extension suffix are removed when
 forming the key. Thus `data/loot_tables/rare/north.json` maps to `example:rare/north`.
