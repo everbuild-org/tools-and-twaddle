@@ -1,0 +1,5 @@
+{
+  "type": "minecraft:binomial",
+  "n": 4,
+  "p": 0.5
+}

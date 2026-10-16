@@ -1,0 +1,9 @@
+{
+  "type": "minecraft:score",
+  "score": "test",
+  "target": {
+    "type": "fixed",
+    "name": "fixture"
+  },
+  "fallback": 0
+}

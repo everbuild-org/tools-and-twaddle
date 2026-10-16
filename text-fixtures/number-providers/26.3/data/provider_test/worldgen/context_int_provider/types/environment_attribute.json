@@ -1,0 +1,4 @@
+{
+  "type": "minecraft:environment_attribute",
+  "attribute": "minecraft:gameplay/sky_light_level"
+}

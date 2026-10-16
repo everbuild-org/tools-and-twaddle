@@ -7,5 +7,5 @@ description = "Minestom-based rule stacking across activity domains"
 
 dependencies {
     compileOnly(libs.minestom)
-    testImplementation(projects.common.twaddleTesting)
+    testImplementation(projects.testing.twaddleTesting)
 }
