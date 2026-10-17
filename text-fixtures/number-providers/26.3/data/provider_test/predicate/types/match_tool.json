@@ -1,0 +1,13 @@
+{
+  "type": "minecraft:match_tool",
+  "predicate": {
+    "items": "#minecraft:cluster_max_harvestables",
+    "predicates": {
+      "minecraft:damage": {
+        "durability": {
+          "min": 1
+        }
+      }
+    }
+  }
+}

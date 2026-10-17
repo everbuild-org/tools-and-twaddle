@@ -14,7 +14,8 @@ For work under `docs/`, also follow `docs/AGENTS.md`.
 - `modules/twaddle-random-ticking`: sampled block updates.
 - `common/twaddle-common-minestom`: event and packet interoperability helpers.
 - `common/twaddle-common-block`: shared block contracts.
-- `common/twaddle-testing`: shared test assertions and Minestom environment fixtures.
+- `testing/twaddle-testing`: shared test assertions and Minestom environment fixtures.
+- `testing/twaddle-data-driven-testing`: fixture-based tests for data-driven codecs and loaders.
 - `testserver/`: Kotlin and Java integration examples; not a published library.
 - `buildSrc/`: shared Kotlin JVM and Maven publishing convention plugins.
 - `docs/`: Astro/Starlight documentation, with pages in `src/content/docs/`.
@@ -65,8 +66,8 @@ git diff --check
 - JVM CI runs `./gradlew build`; use it for changes across modules or shared build conventions.
 - Follow the nearby test style. Kotlin suites use TestBalloon and Kotest assertions;
   JUnit Jupiter and Mockito are also configured, including for Java tests.
-- For Minestom environment tests, reuse `envTest` in `common/twaddle-testing` rather than duplicating
-  process initialization and cleanup. Add `testImplementation(projects.common.twaddleTesting)` when needed.
+- For Minestom environment tests, reuse `envTest` in `testing/twaddle-testing` rather than duplicating
+  process initialization and cleanup. Add `testImplementation(projects.testing.twaddleTesting)` when needed.
 - Cover changed observable behavior and relevant regressions. Test Java interop when changing Java-facing APIs.
 - JaCoCo XML and HTML reports are configured in the JVM convention plugin; CI uploads coverage to Codecov.
 - For documentation-only changes, build the docs. Report checks performed and any limitations;

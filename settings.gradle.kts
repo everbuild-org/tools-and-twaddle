@@ -13,6 +13,7 @@ plugins {
 
 includeImmediateChildren("common")
 includeImmediateChildren("modules")
+includeImmediateChildren("testing")
 include(":testserver")
 
 fun includeImmediateChildren(path: String) {

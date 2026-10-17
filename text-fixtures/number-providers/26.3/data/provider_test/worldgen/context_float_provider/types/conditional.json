@@ -1,0 +1,9 @@
+{
+  "type": "minecraft:conditional",
+  "condition": {
+    "type": "minecraft:random_chance",
+    "chance": 0.5
+  },
+  "on_true": 3.0,
+  "on_false": 1.0
+}

@@ -12,4 +12,9 @@ dependencies {
     implementation(projects.modules.twaddleStructuredLogging)
     implementation(projects.common.twaddleCommonMinestom)
     implementation(projects.modules.twaddleTransferRules)
+    implementation(projects.modules.twaddleDataDriven)
+}
+
+sourceSets.named("main") {
+    resources.srcDir(rootProject.file("text-fixtures/loot-tables/26.3"))
 }

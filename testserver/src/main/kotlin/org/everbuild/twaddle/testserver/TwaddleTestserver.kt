@@ -20,6 +20,8 @@ import org.everbuild.twaddle.structured_logging.field
 import org.everbuild.twaddle.structured_logging.info
 import org.everbuild.twaddle.structured_logging.logger
 import org.everbuild.twaddle.common.minestom.listen
+import org.everbuild.twaddle.data_driven.DataDriven
+import org.everbuild.twaddle.data_driven.source.DataSources
 import org.everbuild.twaddle.lifecycle.runTwaddleApplication
 
 val logger = logger()
@@ -49,6 +51,10 @@ suspend fun main() = runTwaddleApplication { cx ->
 
     MinecraftServer.getCommandManager()
         .register(TestCommand())
+
+    DataSources {
+
+    }
 
     val pngFileBytes = TestCommand::class.java.classLoader.getResourceAsStream("server-icon.png")!!.readAllBytes()
 

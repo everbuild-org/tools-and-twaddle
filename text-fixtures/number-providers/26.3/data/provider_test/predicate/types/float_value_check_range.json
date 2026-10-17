@@ -1,0 +1,11 @@
+{
+  "type": "minecraft:float_value_check",
+  "value": 2.5,
+  "test": {
+    "min": 1.5,
+    "max": {
+      "type": "minecraft:constant",
+      "value": 3.5
+    }
+  }
+}

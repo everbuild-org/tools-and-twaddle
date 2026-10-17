@@ -1,0 +1,11 @@
+{
+  "type": "minecraft:entity_scores",
+  "entity": "this",
+  "scores": {
+    "minecraft:custom": {
+      "min": 1,
+      "max": 10
+    },
+    "minecraft:exact": 5
+  }
+}
