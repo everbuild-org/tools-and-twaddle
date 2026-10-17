@@ -1,5 +1,6 @@
 package org.everbuild.twaddle.datapack_primitives.number_provider
 
+import net.kyori.adventure.key.Key
 import net.minestom.server.codec.Codec
 import net.minestom.server.registry.DynamicRegistry
 import org.everbuild.twaddle.datapack_primitives.number_provider.impl.AbsNumberProviderType
@@ -130,4 +131,18 @@ fun <T> addAllVanillaNumberProviders(
         floatRegistry.register(NumberProviderKeys.SQRT, SqrtNumberProviderType())
         floatRegistry.register(NumberProviderKeys.TRUNCATE, TruncateNumberProviderType())
     }
+}
+
+fun createVanillaFloatProviders(): DynamicRegistry<NumberProviderType<Float>> {
+    @Suppress("UnstableApiUsage")
+    val registry = DynamicRegistry.create<NumberProviderType<Float>>(Key.key("twaddle:vanilla_float_providers"))
+    addAllVanillaNumberProviders(registry, FLOAT_NUMBER_PROVIDER_ARITHMETIC)
+    return registry
+}
+
+fun createVanillaIntProviders(): DynamicRegistry<NumberProviderType<Int>> {
+    @Suppress("UnstableApiUsage")
+    val registry = DynamicRegistry.create<NumberProviderType<Int>>(Key.key("twaddle:vanilla_int_providers"))
+    addAllVanillaNumberProviders(registry, INT_NUMBER_PROVIDER_ARITHMETIC)
+    return registry
 }

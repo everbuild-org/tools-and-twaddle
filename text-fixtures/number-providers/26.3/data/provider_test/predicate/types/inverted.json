@@ -1,0 +1,8 @@
+{
+  "type": "minecraft:inverted",
+  "term": {
+    "type": "minecraft:float_value_check",
+    "value": 1.5,
+    "test": 2.5
+  }
+}

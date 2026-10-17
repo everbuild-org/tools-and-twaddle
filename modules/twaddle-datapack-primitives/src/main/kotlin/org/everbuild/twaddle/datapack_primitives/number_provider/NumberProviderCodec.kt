@@ -4,11 +4,12 @@ import net.kyori.adventure.key.Key
 import net.minestom.server.codec.Codec
 import net.minestom.server.registry.Registry
 import org.everbuild.twaddle.datapack_primitives.number_provider.impl.ConstantNumberProviderDeclaration
+import org.everbuild.twaddle.datapack_primitives.predicate.ContextPredicate
 
 /** Builds a recursive provider codec, including the vanilla scalar form for constants. */
 fun <T> createNumberProviderCodec(
     registry: Registry<org.everbuild.twaddle.datapack_primitives.number_provider.NumberProviderType<T>>,
-    conditionCodec: Codec<org.everbuild.twaddle.datapack_primitives.number_provider.NumberProviderCondition>,
+    conditionCodec: Codec<ContextPredicate>,
     arithmetic: org.everbuild.twaddle.datapack_primitives.number_provider.NumberProviderArithmetic<T>,
     floatProviderCodec: Codec<org.everbuild.twaddle.datapack_primitives.number_provider.NumberProviderDeclaration<Float>>? = null,
 ): Codec<org.everbuild.twaddle.datapack_primitives.number_provider.NumberProviderDeclaration<T>> = Codec.Recursive { providerCodec ->

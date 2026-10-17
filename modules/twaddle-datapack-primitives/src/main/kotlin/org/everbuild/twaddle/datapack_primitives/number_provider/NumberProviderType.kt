@@ -3,6 +3,7 @@ package org.everbuild.twaddle.datapack_primitives.number_provider
 import net.kyori.adventure.key.Key
 import net.minestom.server.codec.Codec
 import net.minestom.server.codec.StructCodec
+import org.everbuild.twaddle.datapack_primitives.predicate.ContextPredicate
 
 internal object NumberProviderKeys {
     val ABS = Key.key("minecraft:abs")
@@ -44,7 +45,7 @@ interface NumberProviderType<T> {
     fun codec(
         providerCodec: Codec<NumberProviderDeclaration<T>>,
         floatProviderCodec: Codec<NumberProviderDeclaration<Float>>?,
-        conditionCodec: Codec<NumberProviderCondition>,
+        conditionCodec: Codec<ContextPredicate>,
         arithmetic: NumberProviderArithmetic<T>,
     ): StructCodec<NumberProviderDeclaration<T>>
 }

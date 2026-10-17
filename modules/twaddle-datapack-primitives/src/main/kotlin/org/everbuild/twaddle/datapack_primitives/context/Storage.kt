@@ -1,4 +1,4 @@
-package org.everbuild.twaddle.datapack_primitives.number_provider.context
+package org.everbuild.twaddle.datapack_primitives.context
 
 import net.kyori.adventure.key.Key
 import net.minestom.server.tag.Tag
@@ -17,20 +17,20 @@ class NbtStorageAccessor<T>(val reader: TagReadable, val tagConstructor: (String
     }
 }
 
-val IntStorageContext = NumberProviderContextKey<StorageAccessor<Int>>("twaddle:int_storage_context")
-val FloatStorageContext = NumberProviderContextKey<StorageAccessor<Float>>("twaddle:float_storage_context")
+val IntStorageContext = DataContextKey<StorageAccessor<Int>>("twaddle:int_storage_context")
+val FloatStorageContext = DataContextKey<StorageAccessor<Float>>("twaddle:float_storage_context")
 
 
 @JvmSynthetic
 @JvmName("withIntStorage")
-fun NumberProviderContext.withStorage(accessor: StorageAccessor<Int>) = withBehaviour(IntStorageContext, accessor)
+fun DataContext.withStorage(accessor: StorageAccessor<Int>) = withBehaviour(IntStorageContext, accessor)
 
 @JvmSynthetic
 @JvmName("withFloatStorage")
-fun NumberProviderContext.withStorage(accessor: StorageAccessor<Float>) = withBehaviour(FloatStorageContext, accessor)
+fun DataContext.withStorage(accessor: StorageAccessor<Float>) = withBehaviour(FloatStorageContext, accessor)
 
 @JvmSynthetic
-fun NumberProviderContext.withIntNbtStorage(reader: TagReadable) = withBehaviour(
+fun DataContext.withIntNbtStorage(reader: TagReadable) = withBehaviour(
     IntStorageContext,
     NbtStorageAccessor(
         reader
@@ -38,7 +38,7 @@ fun NumberProviderContext.withIntNbtStorage(reader: TagReadable) = withBehaviour
 )
 
 @JvmSynthetic
-fun NumberProviderContext.withFloatNbtStorage(reader: TagReadable) = withBehaviour(
+fun DataContext.withFloatNbtStorage(reader: TagReadable) = withBehaviour(
     FloatStorageContext,
     NbtStorageAccessor(
         reader

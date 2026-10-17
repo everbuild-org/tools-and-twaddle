@@ -1,0 +1,10 @@
+{
+  "type": "minecraft:damage_source_properties",
+  "predicate": {
+    "tags": {
+      "id": "#minecraft:is_fire",
+      "expected": true
+    },
+    "is_direct": true
+  }
+}
