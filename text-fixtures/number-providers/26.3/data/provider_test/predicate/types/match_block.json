@@ -1,0 +1,10 @@
+{
+  "type": "minecraft:match_block",
+  "blocks": "minecraft:acacia_door",
+  "state": {
+    "half": "lower"
+  },
+  "components": {
+    "minecraft:custom_name": "test"
+  }
+}

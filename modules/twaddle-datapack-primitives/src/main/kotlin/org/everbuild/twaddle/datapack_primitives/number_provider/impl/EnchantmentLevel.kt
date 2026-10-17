@@ -3,12 +3,12 @@ package org.everbuild.twaddle.datapack_primitives.number_provider.impl
 import net.minestom.server.codec.Codec
 import net.minestom.server.codec.StructCodec
 import org.everbuild.twaddle.datapack_primitives.number_provider.NumberProviderArithmetic
-import org.everbuild.twaddle.datapack_primitives.number_provider.NumberProviderCondition
+import org.everbuild.twaddle.datapack_primitives.predicate.ContextPredicate
 import org.everbuild.twaddle.datapack_primitives.number_provider.NumberProviderDeclaration
 import org.everbuild.twaddle.datapack_primitives.number_provider.NumberProviderKeys
 import org.everbuild.twaddle.datapack_primitives.number_provider.NumberProviderType
-import org.everbuild.twaddle.datapack_primitives.number_provider.context.EnchantmentLevelContext
-import org.everbuild.twaddle.datapack_primitives.number_provider.context.NumberProviderContext
+import org.everbuild.twaddle.datapack_primitives.context.EnchantmentLevelContext
+import org.everbuild.twaddle.datapack_primitives.context.DataContext
 import java.util.Random
 
 private data class LinearEnchantmentAmount(
@@ -23,7 +23,7 @@ private data class EnchantmentLevelDeclaration(
     val amount: LinearEnchantmentAmount,
 ) : NumberProviderDeclaration<Float> {
     override fun type() = NumberProviderKeys.ENCHANTMENT_LEVEL
-    override fun get(context: NumberProviderContext, random: Random): Float {
+    override fun get(context: DataContext, random: Random): Float {
         val levels = context.get(EnchantmentLevelContext)?.enchantments()?.values?.toList().orEmpty()
         val level = if (levels.isEmpty()) 0 else levels[random.nextInt(levels.size)]
         return amount.at(level)
@@ -34,7 +34,7 @@ internal class EnchantmentLevelNumberProviderType : NumberProviderType<Float> {
     override fun codec(
         providerCodec: Codec<NumberProviderDeclaration<Float>>,
         floatProviderCodec: Codec<NumberProviderDeclaration<Float>>?,
-        conditionCodec: Codec<NumberProviderCondition>,
+        conditionCodec: Codec<ContextPredicate>,
         arithmetic: NumberProviderArithmetic<Float>,
     ): StructCodec<NumberProviderDeclaration<Float>> {
         val amountCodec = StructCodec.struct(

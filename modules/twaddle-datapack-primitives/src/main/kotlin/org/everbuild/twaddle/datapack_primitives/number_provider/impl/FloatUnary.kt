@@ -3,10 +3,10 @@ package org.everbuild.twaddle.datapack_primitives.number_provider.impl
 import net.minestom.server.codec.Codec
 import net.minestom.server.codec.StructCodec
 import org.everbuild.twaddle.datapack_primitives.number_provider.NumberProviderArithmetic
-import org.everbuild.twaddle.datapack_primitives.number_provider.NumberProviderCondition
+import org.everbuild.twaddle.datapack_primitives.predicate.ContextPredicate
 import org.everbuild.twaddle.datapack_primitives.number_provider.NumberProviderDeclaration
 import org.everbuild.twaddle.datapack_primitives.number_provider.NumberProviderType
-import org.everbuild.twaddle.datapack_primitives.number_provider.context.NumberProviderContext
+import org.everbuild.twaddle.datapack_primitives.context.DataContext
 import java.util.Random
 
 internal abstract class FloatUnaryNumberProviderType(
@@ -19,13 +19,13 @@ internal abstract class FloatUnaryNumberProviderType(
         val operation: (Float) -> Float,
     ) : NumberProviderDeclaration<Float> {
         override fun type() = key
-        override fun get(context: NumberProviderContext, random: Random) = operation(input.get(context, random))
+        override fun get(context: DataContext, random: Random) = operation(input.get(context, random))
     }
 
     override fun codec(
         providerCodec: Codec<NumberProviderDeclaration<Float>>,
         floatProviderCodec: Codec<NumberProviderDeclaration<Float>>?,
-        conditionCodec: Codec<NumberProviderCondition>,
+        conditionCodec: Codec<ContextPredicate>,
         arithmetic: NumberProviderArithmetic<Float>,
     ) = StructCodec.struct(
         "input", providerCodec,

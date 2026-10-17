@@ -3,51 +3,35 @@ package org.everbuild.twaddle.datapack_primitives.number_provider
 import de.infix.testBalloon.framework.core.TestSuiteScope
 import de.infix.testBalloon.framework.core.testSuite
 import de.infix.testBalloon.framework.shared.TestRegistering
-import net.kyori.adventure.key.Key
-import net.minestom.server.codec.Codec
-import net.minestom.server.codec.StructCodec
-import net.minestom.server.registry.DynamicRegistry
 import org.everbuild.twaddle.data_driven.pattern.PackFolderPattern
 import org.everbuild.twaddle.data_driven.resource.ClasspathSource
 import org.everbuild.twaddle.data_driven.testing.codecFixtures
-import org.everbuild.twaddle.datapack_primitives.number_provider.context.NumberProviderContext
-import java.util.*
+import org.everbuild.twaddle.datapack_primitives.DatapackPrimitives
 
 object SmokeTestAnchor
 
-class AlwaysTrueCondition : NumberProviderCondition {
-    override fun test(
-        context: NumberProviderContext,
-        random: Random
-    ): Boolean = true
-}
-
 @TestRegistering
-private fun <T> TestSuiteScope.numberProviderTests(
-    arithmetic: NumberProviderArithmetic<T>,
-    path: String,
-    floatCodec: Codec<NumberProviderDeclaration<Float>>? = null
-): Codec<NumberProviderDeclaration<T>> {
-    @Suppress("UnstableApiUsage")
-    val typeRegistry = DynamicRegistry.create<NumberProviderType<T>>(Key.key("twaddle:types"))
-    addAllVanillaNumberProviders(typeRegistry, arithmetic)
-    val codec = createNumberProviderCodec(
-        typeRegistry,
-        StructCodec.struct(AlwaysTrueCondition()),
-        arithmetic,
-        floatCodec
+private fun TestSuiteScope.numberProviderTests(primitives: DatapackPrimitives) {
+    codecFixtures(
+        name = "Integer number providers",
+        source = ClasspathSource(SmokeTestAnchor::class),
+        pattern = PackFolderPattern().resource("worldgen/context_int_provider", ".json"),
+        codec = primitives.intNumberProviderCodec,
     )
     codecFixtures(
-        name = "NumberProvider @ $path",
+        name = "Float number providers",
         source = ClasspathSource(SmokeTestAnchor::class),
-        pattern = PackFolderPattern().resource(path, ".json"),
-        codec = codec,
+        pattern = PackFolderPattern().resource("worldgen/context_float_provider", ".json"),
+        codec = primitives.floatNumberProviderCodec,
     )
-
-    return codec
+    codecFixtures(
+        name = "Context predicates",
+        source = ClasspathSource(SmokeTestAnchor::class),
+        pattern = PackFolderPattern().resource("predicate", ".json"),
+        codec = primitives.contextPredicateCodec,
+    )
 }
 
-val NumberProviderSmokeTests by testSuite {
-    val floatCodec = numberProviderTests(FLOAT_NUMBER_PROVIDER_ARITHMETIC, "worldgen/context_float_provider")
-    numberProviderTests(INT_NUMBER_PROVIDER_ARITHMETIC, "worldgen/context_int_provider", floatCodec)
+val DatapackPrimitiveSmokeTests by testSuite {
+    numberProviderTests(DatapackPrimitives.vanilla())
 }
