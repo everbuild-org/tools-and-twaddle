@@ -1,0 +1,19 @@
+{
+  "type": "minecraft:entity",
+  "pools": [
+    {
+      "rolls": 1,
+      "entries": [
+        {
+          "type": "minecraft:item",
+          "name": "minecraft:potion",
+          "modifier": {
+            "type": "minecraft:set_potion",
+            "id": "minecraft:healing"
+          }
+        }
+      ]
+    }
+  ],
+  "random_sequence": "loot_test:coverage/modifiers/set_potion"
+}

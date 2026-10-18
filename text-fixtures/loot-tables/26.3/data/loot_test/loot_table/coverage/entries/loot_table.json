@@ -1,0 +1,15 @@
+{
+  "type": "minecraft:chest",
+  "pools": [
+    {
+      "rolls": 1,
+      "entries": [
+        {
+          "type": "minecraft:loot_table",
+          "value": "loot_test:types/entity"
+        }
+      ]
+    }
+  ],
+  "random_sequence": "loot_test:coverage/entries/loot_table"
+}

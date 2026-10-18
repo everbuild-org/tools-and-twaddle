@@ -1,0 +1,19 @@
+{
+  "type": "minecraft:entity",
+  "pools": [
+    {
+      "condition": {
+        "type": "minecraft:random_chance",
+        "chance": 0.125
+      },
+      "rolls": 1,
+      "entries": [
+        {
+          "type": "minecraft:item",
+          "name": "minecraft:stone"
+        }
+      ]
+    }
+  ],
+  "random_sequence": "loot_test:coverage/conditions/random_chance"
+}

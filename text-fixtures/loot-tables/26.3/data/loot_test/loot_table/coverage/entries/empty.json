@@ -1,0 +1,14 @@
+{
+  "type": "minecraft:chest",
+  "pools": [
+    {
+      "rolls": 1,
+      "entries": [
+        {
+          "type": "minecraft:empty"
+        }
+      ]
+    }
+  ],
+  "random_sequence": "loot_test:coverage/entries/empty"
+}
