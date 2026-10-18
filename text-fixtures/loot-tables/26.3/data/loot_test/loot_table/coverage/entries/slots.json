@@ -1,0 +1,26 @@
+{
+  "type": "minecraft:entity",
+  "pools": [
+    {
+      "rolls": 1,
+      "entries": [
+        {
+          "type": "minecraft:slots",
+          "slot_source": [
+            {
+              "type": "minecraft:slot_range",
+              "source": "this",
+              "slots": "hotbar.*"
+            },
+            {
+              "type": "minecraft:slot_range",
+              "source": "this",
+              "slots": "armor.*"
+            }
+          ]
+        }
+      ]
+    }
+  ],
+  "random_sequence": "loot_test:coverage/entries/slots"
+}

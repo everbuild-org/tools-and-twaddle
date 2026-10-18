@@ -1,0 +1,15 @@
+{
+  "type": "minecraft:group",
+  "sources": [
+    {
+      "type": "minecraft:slot_range",
+      "source": "this",
+      "slots": "hotbar.*"
+    },
+    {
+      "type": "minecraft:slot_range",
+      "source": "attacking_entity",
+      "slots": "armor.*"
+    }
+  ]
+}
