@@ -1,0 +1,26 @@
+{
+  "type": "minecraft:entity",
+  "pools": [
+    {
+      "condition": {
+        "type": "minecraft:table_bonus",
+        "chances": [
+          0.02,
+          0.022222223,
+          0.025,
+          0.033333335,
+          0.1
+        ],
+        "enchantment": "minecraft:fortune"
+      },
+      "rolls": 1,
+      "entries": [
+        {
+          "type": "minecraft:item",
+          "name": "minecraft:stone"
+        }
+      ]
+    }
+  ],
+  "random_sequence": "loot_test:coverage/conditions/table_bonus"
+}

@@ -1,0 +1,22 @@
+{
+  "type": "minecraft:entity",
+  "pools": [
+    {
+      "rolls": 1,
+      "entries": [
+        {
+          "type": "minecraft:item",
+          "name": "minecraft:abandoned_camp_map",
+          "modifier": {
+            "type": "minecraft:set_name",
+            "name": {
+              "translate": "filled_map.bamboo_camp_map"
+            },
+            "target": "item_name"
+          }
+        }
+      ]
+    }
+  ],
+  "random_sequence": "loot_test:coverage/modifiers/set_name"
+}
