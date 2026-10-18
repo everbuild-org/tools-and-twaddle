@@ -7,6 +7,9 @@ description = "Loot generation for Minestom servers"
 
 dependencies {
     compileOnly(libs.minestom)
+    api(projects.modules.twaddleDatapackPrimitives)
+    testImplementation(libs.minestom)
+    testImplementation(projects.testing.twaddleTesting)
 }
 
 sourceSets.named("test") {

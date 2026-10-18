@@ -1,0 +1,21 @@
+{
+  "modifier": [
+    { "type": "minecraft:discard" },
+    { "type": "minecraft:discard" }
+  ],
+  "pools": [
+    {
+      "condition": { "type": "minecraft:killed_by_player" },
+      "modifier": [ { "type": "minecraft:discard" } ],
+      "rolls": 1,
+      "entries": [
+        {
+          "type": "minecraft:item",
+          "name": "minecraft:stone",
+          "condition": [ { "type": "minecraft:killed_by_player" } ],
+          "modifier": { "type": "minecraft:set_count", "count": 2 }
+        }
+      ]
+    }
+  ]
+}

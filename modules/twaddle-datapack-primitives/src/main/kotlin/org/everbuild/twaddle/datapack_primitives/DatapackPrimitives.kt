@@ -17,6 +17,10 @@ import org.everbuild.twaddle.datapack_primitives.predicate.createContextPredicat
 import org.everbuild.twaddle.datapack_primitives.context.EntityPredicateSubPredicateType
 import org.everbuild.twaddle.datapack_primitives.context.addAllVanillaEntityPredicateSubPredicates
 import org.everbuild.twaddle.datapack_primitives.context.createEntityPredicateCodec
+import org.everbuild.twaddle.datapack_primitives.slot_source.SlotSource
+import org.everbuild.twaddle.datapack_primitives.slot_source.SlotSourceType
+import org.everbuild.twaddle.datapack_primitives.slot_source.addAllVanillaSlotSourceTypes
+import org.everbuild.twaddle.datapack_primitives.slot_source.createSlotSourceCodec
 
 /** A configured set of datapack primitive registries and their mutually linked codecs. */
 class DatapackPrimitives private constructor(
@@ -24,9 +28,11 @@ class DatapackPrimitives private constructor(
     val floatNumberProviderTypes: Registry<NumberProviderType<Float>>,
     val contextPredicateTypes: Registry<ContextPredicateType>,
     val entityPredicateSubPredicateTypes: Registry<EntityPredicateSubPredicateType>,
+    val slotSourceTypes: Registry<SlotSourceType>,
     val intNumberProviderCodec: Codec<NumberProviderDeclaration<Int>>,
     val floatNumberProviderCodec: Codec<NumberProviderDeclaration<Float>>,
     val contextPredicateCodec: Codec<ContextPredicate>,
+    val slotSourceCodec: Codec<SlotSource>,
 ) {
     companion object {
         /** Creates a builder preloaded with the implemented vanilla primitive types. */
@@ -60,6 +66,11 @@ class DatapackPrimitives private constructor(
             Key.key("twaddle:entity_predicate_subpredicate_types"),
         )
 
+        @Suppress("UnstableApiUsage")
+        private val slotSourceTypeRegistry = DynamicRegistry.create<SlotSourceType>(
+            Key.key("twaddle:slot_source_types"),
+        )
+
         private var built = false
 
         init {
@@ -67,6 +78,7 @@ class DatapackPrimitives private constructor(
             addAllVanillaNumberProviders(floatTypeRegistry, FLOAT_NUMBER_PROVIDER_ARITHMETIC)
             addAllVanillaContextPredicates(predicateTypeRegistry)
             addAllVanillaEntityPredicateSubPredicates(entityPredicateSubPredicateTypeRegistry)
+            addAllVanillaSlotSourceTypes(slotSourceTypeRegistry)
         }
 
         /** Registers a custom integer provider type. Registrations must use an unused ID. */
@@ -93,6 +105,12 @@ class DatapackPrimitives private constructor(
             registerUnique(entityPredicateSubPredicateTypeRegistry, id, type)
         }
 
+        /** Registers a custom slot-source type. Registrations must use an unused ID. */
+        fun registerSlotSourceType(id: Key, type: SlotSourceType) = apply {
+            ensureOpen()
+            registerUnique(slotSourceTypeRegistry, id, type)
+        }
+
         /** Links codecs and closes this builder. The returned registries are exposed read-only. */
         fun build(): DatapackPrimitives {
             ensureOpen()
@@ -117,6 +135,7 @@ class DatapackPrimitives private constructor(
                 floatProviderCodec,
                 entityPredicateCodec,
             )
+            val slotSourceCodec = createSlotSourceCodec(slotSourceTypeRegistry)
 
             built = true
             return DatapackPrimitives(
@@ -124,9 +143,11 @@ class DatapackPrimitives private constructor(
                 floatTypeRegistry,
                 predicateTypeRegistry,
                 entityPredicateSubPredicateTypeRegistry,
+                slotSourceTypeRegistry,
                 intProviderCodec,
                 floatProviderCodec,
                 predicateCodec,
+                slotSourceCodec,
             )
         }
 
