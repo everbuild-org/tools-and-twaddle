@@ -1,0 +1,23 @@
+{
+  "type": "minecraft:entity",
+  "pools": [
+    {
+      "rolls": 1,
+      "entries": [
+        {
+          "type": "minecraft:item",
+          "name": "minecraft:diamond_hoe",
+          "modifier": {
+            "type": "minecraft:set_damage",
+            "damage": {
+              "type": "minecraft:uniform",
+              "max": 1.0,
+              "min": 0.8
+            }
+          }
+        }
+      ]
+    }
+  ],
+  "random_sequence": "loot_test:coverage/modifiers/set_damage"
+}

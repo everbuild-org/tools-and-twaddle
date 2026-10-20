@@ -1,0 +1,6 @@
+{
+  "type": "minecraft:storage",
+  "storage": "provider_test:values",
+  "path": "count",
+  "fallback": 0
+}

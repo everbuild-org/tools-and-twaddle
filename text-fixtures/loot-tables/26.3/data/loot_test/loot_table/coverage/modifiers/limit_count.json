@@ -1,0 +1,21 @@
+{
+  "type": "minecraft:entity",
+  "pools": [
+    {
+      "rolls": 1,
+      "entries": [
+        {
+          "type": "minecraft:item",
+          "name": "minecraft:brown_mushroom",
+          "modifier": {
+            "type": "minecraft:limit_count",
+            "limit": {
+              "min": 0
+            }
+          }
+        }
+      ]
+    }
+  ],
+  "random_sequence": "loot_test:coverage/modifiers/limit_count"
+}

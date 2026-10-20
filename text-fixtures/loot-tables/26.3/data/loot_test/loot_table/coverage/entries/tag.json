@@ -1,0 +1,16 @@
+{
+  "type": "minecraft:chest",
+  "pools": [
+    {
+      "rolls": 1,
+      "entries": [
+        {
+          "type": "minecraft:tag",
+          "items": "#minecraft:arrows",
+          "expand": true
+        }
+      ]
+    }
+  ],
+  "random_sequence": "loot_test:coverage/entries/tag"
+}

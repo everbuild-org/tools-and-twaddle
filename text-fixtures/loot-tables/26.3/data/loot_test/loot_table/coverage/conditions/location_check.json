@@ -1,0 +1,21 @@
+{
+  "type": "minecraft:entity",
+  "pools": [
+    {
+      "condition": {
+        "type": "minecraft:location_check",
+        "predicate": {
+          "biomes": "minecraft:sulfur_caves"
+        }
+      },
+      "rolls": 1,
+      "entries": [
+        {
+          "type": "minecraft:item",
+          "name": "minecraft:stone"
+        }
+      ]
+    }
+  ],
+  "random_sequence": "loot_test:coverage/conditions/location_check"
+}

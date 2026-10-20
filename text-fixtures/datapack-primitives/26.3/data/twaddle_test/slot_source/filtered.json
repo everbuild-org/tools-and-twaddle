@@ -1,0 +1,11 @@
+{
+  "type": "minecraft:filtered",
+  "item_filter": {
+    "items": "minecraft:diamond"
+  },
+  "slot_source": {
+    "type": "minecraft:slot_range",
+    "source": "this",
+    "slots": "hotbar.*"
+  }
+}

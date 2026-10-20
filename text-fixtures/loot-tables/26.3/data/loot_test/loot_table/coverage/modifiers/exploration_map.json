@@ -1,0 +1,20 @@
+{
+  "type": "minecraft:entity",
+  "pools": [
+    {
+      "rolls": 1,
+      "entries": [
+        {
+          "type": "minecraft:item",
+          "name": "minecraft:abandoned_camp_map",
+          "modifier": {
+            "type": "minecraft:exploration_map",
+            "decoration": "minecraft:abandoned_camp",
+            "destination": "#minecraft:on_abandoned_camp_bamboo_jungle"
+          }
+        }
+      ]
+    }
+  ],
+  "random_sequence": "loot_test:coverage/modifiers/exploration_map"
+}

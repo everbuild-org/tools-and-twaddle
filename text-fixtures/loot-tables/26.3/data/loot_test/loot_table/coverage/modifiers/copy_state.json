@@ -1,0 +1,22 @@
+{
+  "type": "minecraft:entity",
+  "pools": [
+    {
+      "rolls": 1,
+      "entries": [
+        {
+          "type": "minecraft:item",
+          "name": "minecraft:bee_nest",
+          "modifier": {
+            "type": "minecraft:copy_state",
+            "block": "minecraft:bee_nest",
+            "properties": [
+              "honey_level"
+            ]
+          }
+        }
+      ]
+    }
+  ],
+  "random_sequence": "loot_test:coverage/modifiers/copy_state"
+}

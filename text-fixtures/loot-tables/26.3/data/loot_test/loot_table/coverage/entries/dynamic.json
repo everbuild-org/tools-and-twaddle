@@ -1,0 +1,15 @@
+{
+  "type": "minecraft:block",
+  "pools": [
+    {
+      "rolls": 1,
+      "entries": [
+        {
+          "type": "minecraft:dynamic",
+          "name": "minecraft:sherds"
+        }
+      ]
+    }
+  ],
+  "random_sequence": "loot_test:coverage/entries/dynamic"
+}

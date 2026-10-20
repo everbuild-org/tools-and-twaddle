@@ -1,0 +1,23 @@
+{
+  "type": "minecraft:entity",
+  "pools": [
+    {
+      "rolls": 1,
+      "entries": [
+        {
+          "type": "minecraft:item",
+          "name": "minecraft:ominous_bottle",
+          "modifier": {
+            "type": "minecraft:set_ominous_bottle_amplifier",
+            "amplifier": {
+              "type": "minecraft:uniform",
+              "max": 1,
+              "min": 0
+            }
+          }
+        }
+      ]
+    }
+  ],
+  "random_sequence": "loot_test:coverage/modifiers/set_ominous_bottle_amplifier"
+}

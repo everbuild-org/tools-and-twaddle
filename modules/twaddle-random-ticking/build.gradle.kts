@@ -8,5 +8,5 @@ description = "Random block ticking for Minestom instances"
 dependencies {
     compileOnly(libs.minestom)
     api(projects.common.twaddleCommonBlock)
-    testImplementation(projects.common.twaddleTesting)
+    testImplementation(projects.testing.twaddleTesting)
 }

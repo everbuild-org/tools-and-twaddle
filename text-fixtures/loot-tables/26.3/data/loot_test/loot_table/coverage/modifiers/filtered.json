@@ -1,0 +1,26 @@
+{
+  "type": "minecraft:entity",
+  "pools": [
+    {
+      "rolls": 1,
+      "entries": [
+        {
+          "type": "minecraft:item",
+          "name": "minecraft:abandoned_camp_map",
+          "modifier": {
+            "type": "minecraft:filtered",
+            "item_filter": {
+              "predicates": {
+                "minecraft:map_id": {}
+              }
+            },
+            "on_fail": {
+              "type": "minecraft:discard"
+            }
+          }
+        }
+      ]
+    }
+  ],
+  "random_sequence": "loot_test:coverage/modifiers/filtered"
+}

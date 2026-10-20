@@ -1,0 +1,6 @@
+{
+  "type": "minecraft:storage",
+  "storage": "provider_test:values",
+  "path": "ratio",
+  "fallback": 0.0
+}
