@@ -9,6 +9,7 @@ import org.everbuild.twaddle.datapack_primitives.context.DataContextKey
 val LootModifierRegistriesContext = DataContextKey<Registries>("twaddle:loot_modifier_registries")
 
 /** Provides component data from the source named by a `copy_components` modifier. */
+@Suppress("UnstableApiUsage")
 fun interface LootComponentSourceAccess {
     fun getComponents(source: String): DataComponentMap?
 }

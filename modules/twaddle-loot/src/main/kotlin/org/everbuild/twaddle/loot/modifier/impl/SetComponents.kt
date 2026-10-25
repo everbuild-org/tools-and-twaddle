@@ -24,6 +24,7 @@ internal class SetComponentsLootModifierType : LootModifierType {
     override fun codec(modifierCodec: Codec<LootModifier>, predicateCodec: Codec<ContextPredicate>, intNumberProviderCodec: Codec<NumberProviderDeclaration<Int>>, floatNumberProviderCodec: Codec<NumberProviderDeclaration<Float>>) =
         StructCodec.struct("components", Codec.RAW_VALUE, { (it as SetComponentsLootModifier).components }, ::SetComponentsLootModifier)!!
 
+    @Suppress("UnstableApiUsage")
     override fun apply(modifier: LootModifier, item: ItemStack, context: DataContext, random: Random): ItemStack {
         val registries = context[LootModifierRegistriesContext]
         val transcoder = RegistryTranscoder(Transcoder.JSON, registries)

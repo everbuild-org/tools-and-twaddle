@@ -40,7 +40,7 @@ fun createContextPredicateCodec(
         { predicate -> registry.getKey(predicate.type())?.key()?.asString() },
     )
     Codec.Either(Codec.KEY, typedPredicateCodec).transform(
-        { encoded -> encoded.unify(::ContextPredicateReference, { it }) },
+        { encoded -> encoded.unify(::ContextPredicateReference) { it } },
     ) { predicate ->
         if (predicate is ContextPredicateReference) Either.left(predicate.key)
         else Either.right(predicate)

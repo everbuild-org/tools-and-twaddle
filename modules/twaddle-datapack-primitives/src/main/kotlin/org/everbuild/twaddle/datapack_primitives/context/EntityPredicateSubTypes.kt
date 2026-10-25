@@ -7,7 +7,7 @@ import net.minestom.server.codec.StructCodec
 data class EntityTypePredicate(val types: RegistryEntrySet) : EntityPredicateSubPredicate
 
 internal object EntityTypePredicateType : EntityPredicateSubPredicateType {
-    override fun codec(): Codec<EntityPredicateSubPredicate> = registryEntrySetCodec.transform<EntityPredicateSubPredicate>(
+    override fun codec(): Codec<EntityPredicateSubPredicate> = registryEntrySetCodec.transform(
         ::EntityTypePredicate,
     ) { (it as EntityTypePredicate).types }
 }
@@ -15,7 +15,7 @@ internal object EntityTypePredicateType : EntityPredicateSubPredicateType {
 data class LocationEntityPredicate(val location: LocationPredicate) : EntityPredicateSubPredicate
 
 internal object LocationPredicateSubType : EntityPredicateSubPredicateType {
-    override fun codec(): Codec<EntityPredicateSubPredicate> = LOCATION_PREDICATE_CODEC.transform<EntityPredicateSubPredicate>(
+    override fun codec(): Codec<EntityPredicateSubPredicate> = LOCATION_PREDICATE_CODEC.transform(
         ::LocationEntityPredicate,
     ) { (it as LocationEntityPredicate).location }
 }
@@ -23,7 +23,7 @@ internal object LocationPredicateSubType : EntityPredicateSubPredicateType {
 data class TeamPredicate(val team: String) : EntityPredicateSubPredicate
 
 internal object TeamPredicateType : EntityPredicateSubPredicateType {
-    override fun codec(): Codec<EntityPredicateSubPredicate> = Codec.STRING.transform<EntityPredicateSubPredicate>(
+    override fun codec(): Codec<EntityPredicateSubPredicate> = Codec.STRING.transform(
         ::TeamPredicate,
     ) { (it as TeamPredicate).team }
 }
@@ -31,7 +31,7 @@ internal object TeamPredicateType : EntityPredicateSubPredicateType {
 data class PeriodicTickPredicate(val period: Int) : EntityPredicateSubPredicate
 
 internal object PeriodicTickPredicateType : EntityPredicateSubPredicateType {
-    override fun codec(): Codec<EntityPredicateSubPredicate> = Codec.INT.transform<EntityPredicateSubPredicate>(
+    override fun codec(): Codec<EntityPredicateSubPredicate> = Codec.INT.transform(
         ::PeriodicTickPredicate,
     ) { (it as PeriodicTickPredicate).period }
 }
