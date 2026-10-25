@@ -59,6 +59,7 @@ export default defineConfig({
 						{ label: 'Block behaviour', slug: 'modules/block-behaviour' },
 						{ label: 'Random ticking', slug: 'modules/random-ticking' },
 						{ label: 'Data-driven definitions', slug: 'modules/data-driven' },
+						{ label: 'Datapack primitives', slug: 'modules/datapack-primitives' },
 						{ label: 'Loot tables', slug: 'modules/loot' },
 					],
 				},

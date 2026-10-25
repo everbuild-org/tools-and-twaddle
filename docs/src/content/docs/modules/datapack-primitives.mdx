@@ -1,0 +1,378 @@
+---
+title: Datapack primitives
+description: Decode and evaluate Minecraft number providers, predicates, and slot sources.
+---
+import { Tabs, TabItem } from '@astrojs/starlight/components';
+
+`twaddle-datapack-primitives` contains data-driven types that are useful across Minecraft systems without depending
+on loot tables or another gameplay module. It provides codecs, vanilla type registries, and a shared `DataContext`
+for number providers, context predicates, entity predicates, and slot sources.
+
+The module does not load files, own worlds, or fill context values automatically. Your application chooses how to load
+JSON and supplies the runtime values each definition needs.
+
+## Add the module
+
+Use the same published Twaddle version as your other Twaddle modules. Replace `TWADDLE_VERSION` with a version listed
+in [GitHub Releases](https://github.com/everbuild-org/tools-and-twaddle/releases).
+
+```kotlin title="build.gradle.kts"
+dependencies {
+    implementation("org.everbuild.twaddle:twaddle-datapack-primitives:TWADDLE_VERSION")
+}
+```
+
+## Build the registries and codecs
+
+`DatapackPrimitives.vanilla()` creates the built-in registrations and links the codecs. Each configured instance owns
+its registries. Use `builder()` to add your custom types before calling `build()`; the builder closes after that call
+and the resulting registries are exposed read-only.
+
+<Tabs syncKey="jvm-language">
+<TabItem label="Kotlin">
+
+```kotlin
+import org.everbuild.twaddle.datapack_primitives.DatapackPrimitives
+
+val primitives = DatapackPrimitives.vanilla()
+val intProviderCodec = primitives.intNumberProviderCodec
+val floatProviderCodec = primitives.floatNumberProviderCodec
+val predicateCodec = primitives.contextPredicateCodec
+val slotSourceCodec = primitives.slotSourceCodec
+```
+
+</TabItem>
+<TabItem label="Java">
+
+```java
+import org.everbuild.twaddle.datapack_primitives.DatapackPrimitives;
+
+DatapackPrimitives primitives = DatapackPrimitives.vanilla();
+var intProviderCodec = primitives.getIntNumberProviderCodec();
+var floatProviderCodec = primitives.getFloatNumberProviderCodec();
+var predicateCodec = primitives.getContextPredicateCodec();
+var slotSourceCodec = primitives.getSlotSourceCodec();
+```
+
+</TabItem>
+</Tabs>
+
+The codecs are recursive and share registrations. For example, arithmetic providers can contain other providers,
+conditional providers can contain predicates, and predicates can contain number providers. Pass the codecs from this
+single configured instance to the data codecs that use them.
+
+## Number providers
+
+An integer or float provider decodes either from a scalar constant or from an object with a registered `type`.
+Providers are declarations until evaluated; call `get(context, random)` to obtain a value. The caller supplies the
+random source, so a seeded `java.util.Random` makes evaluation repeatable for tests.
+
+The vanilla integer codec registers `abs`, `add`, `avg`, `binomial`, `conditional`, `constant`, `div`,
+`environment_attribute`, `floor_div`, `floor_mod`, `from_float`, `max`, `min`, `mod`, `mul`, `negate`,
+`number_dispatcher`, `pow`, `score`, `storage`, `sub`, `uniform`, and `weighted_list`.
+
+The vanilla float codec registers `abs`, `add`, `avg`, `conditional`, `constant`, `cos`, `div`,
+`enchantment_level`, `environment_attribute`, `floor`, `from_int`, `length`, `max`, `min`, `mod`, `mul`, `negate`,
+`number_dispatcher`, `pow`, `round`, `sin`, `sqrt`, `storage`, `sub`, `truncate`, `uniform`, and `weighted_list`.
+
+Decode and evaluate a nested integer provider:
+
+<Tabs syncKey="jvm-language">
+<TabItem label="Kotlin">
+
+```kotlin
+import com.google.gson.JsonParser
+import net.minestom.server.codec.Codec
+import net.minestom.server.codec.Result
+import net.minestom.server.codec.Transcoder
+import org.everbuild.twaddle.datapack_primitives.context.DataContext
+import org.everbuild.twaddle.datapack_primitives.number_provider.NumberProviderDeclaration
+import java.util.Random
+
+fun <T> decode(codec: Codec<T>, json: String): T = when (
+    val result = codec.decode(Transcoder.JSON, JsonParser.parseString(json))
+) {
+    is Result.Ok -> result.value
+    is Result.Error -> error(result.message)
+}
+
+val provider: NumberProviderDeclaration<Int> = decode(
+    primitives.intNumberProviderCodec,
+    """{"type":"minecraft:add","inputs":[3,{"type":"minecraft:uniform","min":1,"max":4}]}""",
+)
+val amount = provider.get(DataContext(), Random(42))
+```
+
+</TabItem>
+<TabItem label="Java">
+
+```java
+import com.google.gson.JsonParser;
+import net.minestom.server.codec.Codec;
+import net.minestom.server.codec.Result;
+import net.minestom.server.codec.Transcoder;
+import org.everbuild.twaddle.datapack_primitives.context.DataContext;
+import org.everbuild.twaddle.datapack_primitives.number_provider.NumberProviderDeclaration;
+
+import java.util.Random;
+
+static <T> T decode(Codec<T> codec, String json) {
+    Result<T> result = codec.decode(Transcoder.JSON, JsonParser.parseString(json));
+    if (result instanceof Result.Ok<?> ok) {
+        @SuppressWarnings("unchecked")
+        T value = (T) ok.value();
+        return value;
+    }
+    throw new IllegalArgumentException(((Result.Error<?>) result).message());
+}
+
+NumberProviderDeclaration<Integer> provider = decode(
+    primitives.getIntNumberProviderCodec(),
+    """{"type":"minecraft:add","inputs":[3,{"type":"minecraft:uniform","min":1,"max":4}]}"""
+);
+int amount = provider.get(new DataContext(), new Random(42));
+```
+
+</TabItem>
+</Tabs>
+
+The JSON transcoder uses Minestom's Gson-backed codec API. If your application uses another JSON library, convert its
+tree to the JSON tree type expected by `Transcoder.JSON` or provide another transcoder.
+
+### Context-backed providers
+
+Providers that read external state access it through `DataContext`. Missing required context data fails when evaluated,
+unless the provider's JSON defines a fallback. Common accessors include:
+
+| Provider | Context value |
+| --- | --- |
+| `environment_attribute` | Minestom `EnvironmentAttributeMap`, set with `withEnvironment(...)` in Kotlin or `EnvironmentKt.getEnvironmentContext()` in Java |
+| `enchantment_level` | The relevant `EnchantmentList`, set with `withEnchantment(...)` in Kotlin or the `EnchantmentLevelContext` key in Java |
+| `score` | `ScoreAccessor`, set with `withScores(...)` in Kotlin or `ScoreKt.getScoreContext()` in Java |
+| `storage` | `StorageAccessor<Int>` or `StorageAccessor<Float>`; Kotlin has `withStorage(...)`, and Java can use `IntStorageContext` or `FloatStorageContext` |
+| `conditional`, `number_dispatcher` | Any context needed by their nested predicates |
+
+For example, a score provider can read the named objective from an application-owned score store:
+
+<Tabs syncKey="jvm-language">
+<TabItem label="Kotlin">
+
+```kotlin
+import org.everbuild.twaddle.datapack_primitives.context.DataContext
+import org.everbuild.twaddle.datapack_primitives.context.withScores
+import java.util.Random
+
+val scores = mapOf("kills" to 12)
+val context = DataContext().withScores { objective -> scores[objective] ?: 0 }
+val result = provider.get(context, Random(42))
+```
+
+</TabItem>
+<TabItem label="Java">
+
+```java
+import org.everbuild.twaddle.datapack_primitives.context.DataContext;
+import org.everbuild.twaddle.datapack_primitives.context.ScoreKt;
+import java.util.Map;
+import java.util.Random;
+
+Map<String, Integer> scores = Map.of("kills", 12);
+DataContext context = new DataContext();
+context.withBehaviour(ScoreKt.getScoreContext(), objective -> scores.getOrDefault(objective, 0));
+int result = provider.get(context, new Random(42));
+```
+
+</TabItem>
+</Tabs>
+
+Storage accessors receive both the storage key and the data path. Their one-argument method remains a convenient
+fallback for applications that use a single storage object. `withIntNbtStorage` and `withFloatNbtStorage` adapt a
+Minestom `TagReadable` when the requested value is stored directly under a tag name.
+
+## Context predicates
+
+`ContextPredicate` values evaluate to a boolean using the same context and random source. The built-in codec registers
+`all_of`, `any_of`, `inverted`, `random_chance`, `int_value_check`, `float_value_check`, `time_check`, `weather_check`,
+`location_check`, `environment_attribute_check`, `killed_by_player`, `entity_properties`, `entity_scores`,
+`damage_source_properties`, `match_tool`, `match_block`, `table_bonus`, `random_chance_with_enchanted_bonus`,
+`survives_explosion`, and `enchantment_active_check`.
+
+```json
+{
+  "type": "minecraft:all_of",
+  "predicates": [
+    { "type": "minecraft:random_chance", "chance": 0.25 },
+    { "type": "minecraft:killed_by_player" }
+  ]
+}
+```
+
+The table below lists context values that predicates may need. Attach only the values relevant to the definitions you
+evaluate. In Kotlin, the module supplies `with...` extensions for these keys. Java code can use `DataContext.withBehaviour`
+and the key accessors on the generated `*Kt` classes.
+
+| Predicate behavior | Context key / accessor |
+| --- | --- |
+| Weather and time checks | `WeatherContext`, `WorldTimeContext` |
+| Location checks | `LocationContextKey`, including a `LocationPredicateEvaluator` |
+| Entity properties and scores | `EntityPredicateContext`, `ScoreContext` |
+| Damage source properties | `DamageSourcePredicateContext` |
+| Tool and block matching | `ToolPredicateContext`, `BlockPredicateContext` |
+| Enchantment checks and bonus chance | `EnchantmentActiveContext`, `EnchantmentLevelContext` |
+| Explosion and player-kill checks | `ExplosionRadiusContext`, `KilledByPlayerContext` |
+| Environment attributes | `EnvironmentContext` |
+
+Matcher interfaces let the host delegate matching to its item, block, entity, or damage-source implementation. The
+primitive module does not install vanilla matchers. The [`twaddle-loot` module](./loot/) adds Minestom-oriented defaults
+to its world context factories.
+
+Predicates may also be referenced by key using the namespaced-string shorthand supported by `contextPredicateCodec`. Install a
+`ContextPredicateResolver` in the context to resolve such references at evaluation time. Unknown references fail
+clearly instead of silently passing.
+
+For a context-free predicate, evaluation is the same from either language:
+
+<Tabs syncKey="jvm-language">
+<TabItem label="Kotlin">
+
+```kotlin
+import org.everbuild.twaddle.datapack_primitives.context.DataContext
+import org.everbuild.twaddle.datapack_primitives.predicate.ContextPredicate
+import java.util.Random
+
+val predicate: ContextPredicate = decode(
+    primitives.contextPredicateCodec,
+    """{"type":"minecraft:random_chance","chance":0.25}""",
+)
+val matches = predicate.test(DataContext(), Random(42))
+```
+
+</TabItem>
+<TabItem label="Java">
+
+```java
+import org.everbuild.twaddle.datapack_primitives.context.DataContext;
+import org.everbuild.twaddle.datapack_primitives.predicate.ContextPredicate;
+import java.util.Random;
+
+ContextPredicate predicate = decode(
+    primitives.getContextPredicateCodec(),
+    """{"type":"minecraft:random_chance","chance":0.25}"""
+);
+boolean matches = predicate.test(new DataContext(), new Random(42));
+```
+
+</TabItem>
+</Tabs>
+
+## Slot sources
+
+Slot sources describe which item stacks to read from a loot-context inventory. They do not own an inventory or decide
+what an entity source means; `SlotSourceInventoryAccess` performs that lookup. The built-in types are `empty`,
+`slot_range`, `contents`, `filtered`, `group`, and `limit_slots`. A JSON list is shorthand for a group.
+
+```json
+[
+  { "type": "minecraft:slot_range", "source": "this", "slots": "hotbar.*" },
+  { "type": "minecraft:slot_range", "source": "this", "slots": ["armor.*", "weapon.*"] }
+]
+```
+
+`SlotSource.evaluate(context)` returns one stack per selected slot in source order. Keep empty positions as `ItemStack.AIR`
+in your `SlotSourceInventoryAccess` result. `filtered` also needs an `ItemPredicateMatcher`. In Kotlin, install those
+with `withSlotSourceInventoryAccess(...)` and `withItemPredicateMatcher(...)`; Java code can set
+`SlotSourceInventoryContext` and `ItemPredicateMatcherContext` with `withBehaviour`.
+
+For example, a `slot_range` source asks the host for a named entity source and slot pattern:
+
+<Tabs syncKey="jvm-language">
+<TabItem label="Kotlin">
+
+```kotlin
+import net.minestom.server.item.ItemStack
+import net.minestom.server.item.Material
+import org.everbuild.twaddle.datapack_primitives.context.DataContext
+import org.everbuild.twaddle.datapack_primitives.slot_source.SlotSource
+import org.everbuild.twaddle.datapack_primitives.context.withSlotSourceInventoryAccess
+
+val slots = decode(
+    primitives.slotSourceCodec,
+    """{"type":"minecraft:slot_range","source":"this","slots":"weapon.mainhand"}""",
+)
+val context = DataContext().withSlotSourceInventoryAccess { source, patterns ->
+    check(source == "this" && patterns == listOf("weapon.mainhand"))
+    listOf(ItemStack.of(Material.DIAMOND_SWORD))
+}
+val selected = slots.evaluate(context)
+```
+
+</TabItem>
+<TabItem label="Java">
+
+```java
+import net.minestom.server.item.ItemStack;
+import net.minestom.server.item.Material;
+import org.everbuild.twaddle.datapack_primitives.context.DataContext;
+import org.everbuild.twaddle.datapack_primitives.context.SlotSourceAccessKt;
+import org.everbuild.twaddle.datapack_primitives.context.SlotSourceInventoryAccess;
+import org.everbuild.twaddle.datapack_primitives.slot_source.SlotSource;
+import java.util.List;
+
+SlotSource slots = decode(
+    primitives.getSlotSourceCodec(),
+    """{"type":"minecraft:slot_range","source":"this","slots":"weapon.mainhand"}"""
+);
+DataContext context = new DataContext();
+context.withBehaviour(
+    SlotSourceAccessKt.getSlotSourceInventoryContext(),
+    (SlotSourceInventoryAccess) (source, patterns) -> List.of(ItemStack.of(Material.DIAMOND_SWORD))
+);
+List<ItemStack> selected = slots.evaluate(context);
+```
+
+</TabItem>
+</Tabs>
+
+## Add custom types
+
+`DatapackPrimitives.builder()` starts with the vanilla registrations and accepts additional registrations before
+`build()`:
+
+```kotlin
+import net.kyori.adventure.key.Key
+import org.everbuild.twaddle.datapack_primitives.DatapackPrimitives
+
+val primitives = DatapackPrimitives.builder()
+    .registerIntNumberProviderType(Key.key("example:my_provider"), myProviderType)
+    .registerFloatNumberProviderType(Key.key("example:my_float_provider"), myFloatProviderType)
+    .registerContextPredicateType(Key.key("example:my_predicate"), myPredicateType)
+    .registerEntityPredicateSubPredicateType(Key.key("example:my_entity_rule"), myEntityRuleType)
+    .registerSlotSourceType(Key.key("example:my_slots"), mySlotSourceType)
+    .build()
+```
+
+The same registration flow is available in Java. Implement the relevant type interfaces in ordinary Java classes, then
+pass those instances to the builder before `build()`:
+
+```java
+import net.kyori.adventure.key.Key;
+import org.everbuild.twaddle.datapack_primitives.DatapackPrimitives;
+
+var primitives = DatapackPrimitives.builder()
+    .registerIntNumberProviderType(Key.key("example:my_provider"), myProviderType)
+    .registerFloatNumberProviderType(Key.key("example:my_float_provider"), myFloatProviderType)
+    .registerContextPredicateType(Key.key("example:my_predicate"), myPredicateType)
+    .registerEntityPredicateSubPredicateType(Key.key("example:my_entity_rule"), myEntityRuleType)
+    .registerSlotSourceType(Key.key("example:my_slots"), mySlotSourceType)
+    .build();
+```
+
+Implement `NumberProviderType<T>`, `ContextPredicateType`, `EntityPredicateSubPredicateType`, or `SlotSourceType` for
+your new definition. Each type provides the Minestom `StructCodec` for its JSON fields and returns a model implementing
+the matching interface. The builder links the recursive codecs after registration, so custom types can refer to the
+codecs passed to their `codec(...)` methods. Java uses the same builder methods and interfaces.
+
+## Related modules
+
+- [`twaddle-data-driven`](./data-driven/) can load decoded definitions from folders, ZIP files, or the classpath.
+- [`twaddle-loot`](./loot/) composes these providers, predicates, and slot sources into loot tables and evaluates them.
