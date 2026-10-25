@@ -9,7 +9,7 @@ mockito-kotlin = "6.4.0"
 kotlinx-coroutines = "1.11.0"
 
 testballoon-plugin = "1.1.0"
-testballoon = "1.1.0"
+testballoon = "1.2.0"
 
 [libraries]
 minestom = { group = "net.minestom", name = "minestom", version.ref = "minestom" }
