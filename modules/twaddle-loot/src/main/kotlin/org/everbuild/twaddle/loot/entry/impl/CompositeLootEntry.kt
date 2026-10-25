@@ -8,6 +8,10 @@ import org.everbuild.twaddle.loot.entry.LootEntryData
 import org.everbuild.twaddle.loot.entry.LootEntryKeys
 import org.everbuild.twaddle.loot.entry.LootEntryType
 import org.everbuild.twaddle.loot.entry.lootEntryCodec
+import org.everbuild.twaddle.loot.entry.LootEntryEvaluation
+import org.everbuild.twaddle.loot.entry.LootEntryExpansion
+import org.everbuild.twaddle.loot.entry.LootEntryCandidate
+import org.everbuild.twaddle.loot.entry.withParentModifiers
 import org.everbuild.twaddle.loot.modifier.LootModifier
 
 data class GroupLootEntryData(val children: List<LootEntry>) : LootEntryData {
@@ -32,6 +36,14 @@ internal class GroupLootEntryType : LootEntryType {
         predicateCodec,
         modifierCodec,
     ) { it.value as GroupLootEntryData }
+
+    override fun expand(entry: LootEntry, evaluation: LootEntryEvaluation): LootEntryExpansion {
+        val expansions = (entry.value as GroupLootEntryData).children.map(evaluation::expand)
+        return LootEntryExpansion(
+            succeeded = expansions.any(LootEntryExpansion::succeeded),
+            candidates = expansions.flatMap(LootEntryExpansion::candidates),
+        ).withParentModifiers(entry.modifiers)
+    }
 }
 
 internal class AlternativesLootEntryType : LootEntryType {
@@ -44,6 +56,15 @@ internal class AlternativesLootEntryType : LootEntryType {
         predicateCodec,
         modifierCodec,
     ) { it.value as AlternativesLootEntryData }
+
+    override fun expand(entry: LootEntry, evaluation: LootEntryEvaluation): LootEntryExpansion {
+        val children = (entry.value as AlternativesLootEntryData).children
+        for (child in children) {
+            val expansion = evaluation.expand(child)
+            if (expansion.succeeded) return expansion.withParentModifiers(entry.modifiers)
+        }
+        return LootEntryExpansion(false, emptyList())
+    }
 }
 
 internal class SequenceLootEntryType : LootEntryType {
@@ -56,6 +77,18 @@ internal class SequenceLootEntryType : LootEntryType {
         predicateCodec,
         modifierCodec,
     ) { it.value as SequenceLootEntryData }
+
+    override fun expand(entry: LootEntry, evaluation: LootEntryEvaluation): LootEntryExpansion {
+        val candidates = mutableListOf<LootEntryCandidate>()
+        for (child in (entry.value as SequenceLootEntryData).children) {
+            val expansion = evaluation.expand(child)
+            candidates += expansion.candidates
+            if (!expansion.succeeded) {
+                return LootEntryExpansion(false, candidates).withParentModifiers(entry.modifiers)
+            }
+        }
+        return LootEntryExpansion(true, candidates).withParentModifiers(entry.modifiers)
+    }
 }
 
 private fun <T : LootEntryData> childrenCodec(

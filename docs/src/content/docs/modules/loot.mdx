@@ -1,0 +1,85 @@
+---
+title: Loot tables
+description: Decode and evaluate loot tables with application-owned datapack context.
+---
+
+The `twaddle-loot` module provides codecs and runtime evaluation for Minecraft loot tables. It uses the shared
+`twaddle-datapack-primitives` number providers, predicates, and slot sources. Loot tables remain ordinary values; the
+application owns data loading, table lookup, and server-specific behavior.
+
+## Build the codec
+
+Register the vanilla entry and modifier types and pass their registries to `createLootTableCodec`:
+
+```kotlin
+val primitives = DatapackPrimitives.vanilla()
+val entryTypes = createVanillaLootEntryTypeRegistry()
+val modifierTypes = createVanillaLootModifierTypeRegistry()
+
+val lootTableCodec = createLootTableCodec(
+    primitives.contextPredicateCodec,
+    entryTypes,
+    modifierTypes,
+    primitives.intNumberProviderCodec,
+    primitives.floatNumberProviderCodec,
+    primitives.slotSourceCodec,
+)
+```
+
+The codec supports the registered vanilla entry and modifier types, including inline or keyed `minecraft:loot_table`
+entries. It decodes the current Minecraft data format represented by this module's fixtures. Unknown type IDs fail to
+decode unless the application registers a codec for them.
+
+## Evaluate a table
+
+`LootTableEvaluator` uses the same entry and modifier registries. Supply a `DataContext` with values required by the
+table's predicates, number providers, and modifiers:
+
+```kotlin
+val evaluator = LootTableEvaluator(entryTypes, modifierTypes)
+val context = DataContext(hashMapOf())
+val drops = evaluator.generate(table, context, Random())
+```
+
+The evaluator applies entry and pool selection, luck-adjusted weights and bonus rolls, nested tables, dynamic drops,
+modifiers, and named random sequences. If a table declares `random_sequence`, add a `RandomSequenceController` to the
+context. Nested table references use `withLootTableResolver`; dynamic entries use `withDynamicLootResolver`.
+
+## Provide server behavior
+
+The application remains responsible for behavior that depends on a world, inventory, or server registries. Add the
+corresponding access object to `DataContext` when a table can use these modifiers:
+
+- `copy_state` reads the source block state through `withLootBlockStateAccess`.
+- `furnace_smelt` resolves a smelting result through `withFurnaceSmeltAccess`.
+- `exploration_map` searches for a destination and creates map data through `withExplorationMapAccess`.
+- `copy_components` reads its named component source through `withLootComponentSourceAccess`.
+- Enchantment modifiers read Minestom's registries through `withLootModifierRegistries`.
+- `filtered` delegates item matching through `withItemPredicateMatcher`.
+
+Missing required context values fail clearly when the relevant behavior is evaluated. Tables that use only item entries
+and context-free modifiers do not need these hooks.
+
+The evaluator accepts `java.util.Random`, so callers control the random stream and tests can use seeded values. Its
+distribution is suitable for deterministic tests with this API, but it does not promise seed-for-seed output parity with
+Minecraft's internal random generator.
+
+## Create vanilla Minestom contexts
+
+`DataContext` provides Minestom helpers for the common vanilla loot contexts:
+
+- `DataContext.blockBreak(...)` and `DataContext.blockInteract(...)` create block contexts. Each has an overload taking
+  its corresponding Minestom player event.
+- `DataContext.entityDeath(...)` accepts an entity or `EntityDeathEvent`. Pass the lethal `Damage` when available;
+  Minestom's death event does not include attacker or damage-source details.
+- `DataContext.containerLoot(...)` accepts an instance and container block position, or an `InventoryOpenEvent` plus
+  that position. The event does not identify the container's world position.
+- `DataContext.fishing(...)` accepts the fishing-hook entity and infers its instance, origin, and current main-hand rod.
+  Pass the rod explicitly if the owner has changed hands since casting.
+
+These helpers install Minestom registries and environment access, random-sequence handling, and vanilla predicate and
+location evaluators. Block contexts also provide block-state, block-entity component, and dynamic-loot access. Callers
+can override context behaviors with `withBehaviour`; other vanilla context types remain caller-composed for now.
+
+Java callers can use the equivalent static methods on `VanillaLootContexts`, for example
+`VanillaLootContexts.blockBreak(event)`. Each factory also has an overload accepting all of its context options.

@@ -15,5 +15,7 @@ fun applyLootModifier(
 ): ItemStack? {
     val type = registry.get(modifier.type())
         ?: error("No loot modifier type registered for ${modifier.type()}")
-    return type.apply(modifier, item, context, random)
+    if (!modifier.conditions.all { it.test(context, random) }) return item
+    context.withBehaviour(LootModifierRegistryContext, registry)
+    return type.apply(modifier.withoutConditions(), item, context, random)
 }

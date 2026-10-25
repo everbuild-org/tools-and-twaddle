@@ -26,4 +26,7 @@ internal class DynamicLootEntryType : LootEntryType {
             it.value as DynamicLootEntryData
         }
     }
+
+    override fun expand(entry: LootEntry, evaluation: LootEntryEvaluation): LootEntryExpansion =
+        evaluation.dynamic(entry, (entry.value as DynamicLootEntryData).name)
 }

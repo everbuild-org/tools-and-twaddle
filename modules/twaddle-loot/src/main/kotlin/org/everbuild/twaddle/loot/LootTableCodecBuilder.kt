@@ -39,28 +39,30 @@ fun createLootTableCodec(
     floatNumberProviderCodec: Codec<NumberProviderDeclaration<Float>>,
     slotSourceCodec: Codec<SlotSource>,
 ): Codec<LootTable> {
-    val modifierCodec = createLootModifierCodec(
-        modifierTypes,
-        predicateCodec,
-        intNumberProviderCodec,
-        floatNumberProviderCodec,
-    )
-    val entryCodec = createLootEntryCodec(entryTypes, predicateCodec, modifierCodec, slotSourceCodec)
-    val poolCodec = createLootPoolCodec(
-        entryCodec,
-        predicateCodec,
-        modifierCodec,
-        intNumberProviderCodec,
-        floatNumberProviderCodec,
-    )
+    return Codec.Recursive { lootTableCodec ->
+        val modifierCodec = createLootModifierCodec(
+            modifierTypes,
+            predicateCodec,
+            intNumberProviderCodec,
+            floatNumberProviderCodec,
+        )
+        val entryCodec = createLootEntryCodec(entryTypes, predicateCodec, modifierCodec, slotSourceCodec, lootTableCodec)
+        val poolCodec = createLootPoolCodec(
+            entryCodec,
+            predicateCodec,
+            modifierCodec,
+            intNumberProviderCodec,
+            floatNumberProviderCodec,
+        )
 
-    return StructCodec.struct(
-        "type", Codec.STRING.optional("generic"), LootTable::type,
-        "pools", poolCodec.list().optional(emptyList()), LootTable::pools,
-        "random_sequence", Codec.STRING.optional(), LootTable::randomSequence,
-        "modifier", modifierCodec.listOrSingle().optional(emptyList()), LootTable::modifiers,
-    ) { type, pools, randomSequence, modifiers ->
-        LootTable(type, pools, randomSequence, modifiers)
+        StructCodec.struct(
+            "type", Codec.STRING.optional("generic"), LootTable::type,
+            "pools", poolCodec.list().optional(emptyList()), LootTable::pools,
+            "random_sequence", Codec.STRING.optional(), LootTable::randomSequence,
+            "modifier", modifierCodec.listOrSingle().optional(emptyList()), LootTable::modifiers,
+        ) { type, pools, randomSequence, modifiers ->
+            LootTable(type, pools, randomSequence, modifiers)
+        }
     }
 }
 

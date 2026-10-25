@@ -8,6 +8,8 @@ import org.everbuild.twaddle.loot.entry.LootEntryData
 import org.everbuild.twaddle.loot.entry.LootEntryKeys
 import org.everbuild.twaddle.loot.entry.LootEntryType
 import org.everbuild.twaddle.loot.entry.lootEntryCodec
+import org.everbuild.twaddle.loot.entry.LootEntryEvaluation
+import org.everbuild.twaddle.loot.entry.LootEntryExpansion
 import org.everbuild.twaddle.loot.modifier.LootModifier
 
 data object EmptyLootEntryData : LootEntryData {
@@ -24,4 +26,7 @@ internal class EmptyLootEntryType : LootEntryType {
         predicateCodec,
         modifierCodec,
     ) { EmptyLootEntryData }
+
+    override fun expand(entry: LootEntry, evaluation: LootEntryEvaluation): LootEntryExpansion =
+        evaluation.candidate(entry) { _, _ -> emptyList() }
 }

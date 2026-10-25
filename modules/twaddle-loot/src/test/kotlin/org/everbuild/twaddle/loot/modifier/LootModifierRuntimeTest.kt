@@ -16,6 +16,7 @@ import org.everbuild.twaddle.datapack_primitives.DatapackPrimitives
 import org.everbuild.twaddle.datapack_primitives.context.DataContext
 import org.everbuild.twaddle.datapack_primitives.context.withExplosionRadius
 import org.everbuild.twaddle.datapack_primitives.number_provider.NumberProviderDeclaration
+import org.everbuild.twaddle.datapack_primitives.predicate.ContextPredicate
 import org.everbuild.twaddle.core.test.envTest
 import org.everbuild.twaddle.loot.modifier.impl.DiscardLootModifier
 import org.everbuild.twaddle.loot.modifier.impl.ExplosionDecayLootModifier
@@ -45,6 +46,11 @@ private fun runtimeContext() = DataContext(hashMapOf())
 private fun apply(modifier: LootModifier, item: ItemStack, context: DataContext = runtimeContext(), random: Random = Random(0)) =
     applyLootModifier(modifier, item, modifierTypes, context, random)
 
+private object NeverApplyCondition : ContextPredicate {
+    override fun type() = Key.key("loot_test:never_apply")
+    override fun test(context: DataContext, random: Random) = false
+}
+
 val lootModifierRuntimeTests by testSuite("Loot modifier runtime") {
     test("set_count evaluates the regular integer provider and replaces or adds") {
         val provider = decodeProvider(datapackPrimitives.intNumberProviderCodec, "4")
@@ -58,6 +64,21 @@ val lootModifierRuntimeTests by testSuite("Loot modifier runtime") {
         val provider = decodeProvider(datapackPrimitives.intNumberProviderCodec, "0")
 
         apply(SetCountLootModifier(provider), ItemStack.of(Material.STICK)) shouldBe ItemStack.AIR
+    }
+
+    test("failed modifier conditions skip the modifier") {
+        var providerReads = 0
+        val provider = object : NumberProviderDeclaration<Int> {
+            override fun type() = Key.key("loot_test:counting_provider")
+            override fun get(context: DataContext, random: Random): Int {
+                providerReads++
+                return 4
+            }
+        }
+        val item = ItemStack.of(Material.ARROW, 3)
+
+        apply(LootModifierWithConditions(SetCountLootModifier(provider), listOf(NeverApplyCondition)), item) shouldBe item
+        providerReads shouldBe 0
     }
 
     envTest("set_potion writes the resolved potion contents") { _ ->

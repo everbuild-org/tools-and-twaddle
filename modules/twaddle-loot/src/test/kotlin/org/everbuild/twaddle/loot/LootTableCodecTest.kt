@@ -78,4 +78,17 @@ val lootTableCodecTests by testSuite("Loot table codecs") {
         table.type shouldBe "generic"
         table.pools shouldBe emptyList()
     }
+
+    test("loot table entries decode and encode both references and inline tables") {
+        val table = decodeTable(
+            """{"pools":[{"rolls":1,"entries":[{"type":"minecraft:loot_table","value":{"pools":[{"rolls":1,"entries":[{"type":"minecraft:item","name":"minecraft:diamond"}]}]}}]}]}""",
+        )
+
+        val encoded = when (val result = lootTableCodec.encode(Transcoder.JSON, table)) {
+            is Result.Ok -> result.value
+            is Result.Error -> error("Could not encode inline loot table: ${result.message}")
+        }
+        val decodedAgain = decodeTable(encoded.toString())
+        decodedAgain shouldBe table
+    }
 }

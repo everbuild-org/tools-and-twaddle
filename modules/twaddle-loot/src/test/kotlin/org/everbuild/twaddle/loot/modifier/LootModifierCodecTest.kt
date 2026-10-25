@@ -68,6 +68,21 @@ val lootModifierCodecTests by testSuite("Loot modifier codecs") {
         modifier shouldBe SetCountLootModifier(TestIntNumberProvider(decodeRaw("\"fixed\"")), add = true)
     }
 
+    test("modifier conditions are shared across registered modifier types") {
+        val modifier = decodeModifier(
+            """{"type":"minecraft:set_count","count":"fixed","condition":{"type":"loot_test:predicate"}}""",
+        )
+
+        modifier shouldBe LootModifierWithConditions(
+            SetCountLootModifier(TestIntNumberProvider(decodeRaw("\"fixed\""))),
+            listOf(TestPredicate(decodeRaw("""{"type":"loot_test:predicate"}"""))),
+        )
+        val encoded = modifierCodec.encode(Transcoder.JSON, modifier)
+        (encoded as Ok).value shouldBe JsonParser.parseString(
+            """{"type":"minecraft:set_count","count":"fixed","condition":{"type":"loot_test:predicate"}}""",
+        )
+    }
+
     test("set_count encodes its registered type and omits the default add flag") {
         val modifier = SetCountLootModifier(TestIntNumberProvider(decodeRaw("\"fixed\"")))
         val encoded = modifierCodec.encode(Transcoder.JSON, modifier)
