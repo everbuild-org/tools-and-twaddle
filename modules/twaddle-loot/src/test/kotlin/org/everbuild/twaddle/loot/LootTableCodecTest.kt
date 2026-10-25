@@ -11,6 +11,7 @@ import org.everbuild.twaddle.datapack_primitives.DatapackPrimitives
 import org.everbuild.twaddle.loot.entry.createLootEntryCodec
 import org.everbuild.twaddle.loot.entry.createVanillaLootEntryTypeRegistry
 import org.everbuild.twaddle.loot.entry.impl.ItemLootEntryData
+import org.everbuild.twaddle.loot.entry.impl.LootTableReferenceEntryData
 import org.everbuild.twaddle.loot.modifier.createLootModifierCodec
 import org.everbuild.twaddle.loot.modifier.createVanillaLootModifierTypeRegistry
 import java.nio.file.Files
@@ -78,6 +79,26 @@ val lootTableCodecTests by testSuite("Loot table codecs") {
                 is Result.Error -> error("Could not decode item entry: ${result.message}")
             }
             decodedEntry.value shouldBe ItemLootEntryData(Key.key("minecraft:diamond"))
+
+            val decodedReference = when (
+                val result = codec.decode(
+                    Transcoder.JSON,
+                    JsonParser.parseString("""{"type":"minecraft:loot_table","value":"loot_test:referenced"}"""),
+                )
+            ) {
+                is Result.Ok -> result.value
+                is Result.Error -> error("Could not decode loot-table reference: ${result.message}")
+            }
+            decodedReference.value shouldBe LootTableReferenceEntryData(Key.key("loot_test:referenced"))
+            val encodedReference = when (val result = codec.encode(Transcoder.JSON, decodedReference)) {
+                is Result.Ok -> result.value
+                is Result.Error -> error("Could not encode loot-table reference: ${result.message}")
+            }
+            val decodedReferenceAgain = when (val result = codec.decode(Transcoder.JSON, encodedReference)) {
+                is Result.Ok -> result.value
+                is Result.Error -> error("Could not round-trip loot-table reference: ${result.message}")
+            }
+            decodedReferenceAgain shouldBe decodedReference
         }
     }
 
