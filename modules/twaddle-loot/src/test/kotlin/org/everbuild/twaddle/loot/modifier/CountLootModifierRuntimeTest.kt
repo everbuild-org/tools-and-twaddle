@@ -117,6 +117,24 @@ val countLootModifierRuntimeTests by testSuite("Loot count modifier runtime") {
                 ApplyBonusLootModifier(
                     fortune,
                     "minecraft:binomial_with_bonus_count",
+                    ApplyBonusParameters(extra = 0),
+                ),
+                item,
+                enchantedContext,
+            )
+        }
+        shouldThrow<IllegalArgumentException> {
+            apply(
+                ApplyBonusLootModifier(fortune, "minecraft:uniform_bonus_count"),
+                item,
+                enchantedContext,
+            )
+        }
+        shouldThrow<IllegalArgumentException> {
+            apply(
+                ApplyBonusLootModifier(
+                    fortune,
+                    "minecraft:binomial_with_bonus_count",
                     ApplyBonusParameters(extra = 0, probability = 1.1f),
                 ),
                 item,

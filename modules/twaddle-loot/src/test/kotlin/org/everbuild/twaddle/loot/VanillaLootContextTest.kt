@@ -52,7 +52,10 @@ import org.everbuild.twaddle.datapack_primitives.context.DataContext
 import org.everbuild.twaddle.datapack_primitives.context.DefaultRandomSequenceController
 import org.everbuild.twaddle.datapack_primitives.context.EntityPredicate
 import org.everbuild.twaddle.datapack_primitives.context.EntityPredicateContext
+import org.everbuild.twaddle.datapack_primitives.context.EntityNestedPredicate
+import org.everbuild.twaddle.datapack_primitives.context.EntityPredicateSubPredicate
 import org.everbuild.twaddle.datapack_primitives.context.EntityPredicateValue
+import org.everbuild.twaddle.datapack_primitives.context.EntityTypePredicate
 import org.everbuild.twaddle.datapack_primitives.context.EnchantmentLevelContext
 import org.everbuild.twaddle.datapack_primitives.context.ExplosionRadiusContext
 import org.everbuild.twaddle.datapack_primitives.context.FluidLocationPredicate
@@ -156,18 +159,27 @@ val VanillaLootContextTests by testSuite("Vanilla loot contexts") {
             location.origin,
             atStone.copy(structures = RegistryEntrySet(listOf(RegistryEntryReference(Key.key("test:other"))))),
         ) shouldBe false
+        location.evaluator.matches(
+            location.origin,
+            LocationPredicate(
+                biomes = RegistryEntrySet(
+                    listOf(RegistryEntryReference(Key.key("test:missing_biomes"), tag = true)),
+                ),
+            ),
+        ) shouldBe false
     }
 
     envTest("entity matchers evaluate distance, movement, cadence, tags, and vehicle roles") { env ->
         val instance = env.createEmptyInstance()
         val pig = Entity(EntityType.PIG)
+        val zombie = Entity(EntityType.ZOMBIE)
         val target = Entity(EntityType.SHEEP)
         val hunter = EntityCreature(EntityType.PIG).apply { this.target = target }
         val context = DataContext.blockBreak(
             instance = instance,
             block = Block.STONE,
             blockPosition = BlockVec(2, 3, 4),
-            entityTargets = mapOf("this" to pig, "hunter" to hunter),
+            entityTargets = mapOf("this" to pig, "hunter" to hunter, "undead" to zombie),
         )
         val matcher = context[EntityPredicateContext]
 
@@ -188,6 +200,14 @@ val VanillaLootContextTests by testSuite("Vanilla loot contexts") {
         ) shouldBe false
         matcher.matches("this", decodeEntityPredicate("""{"minecraft:periodic_tick":1}""")) shouldBe true
         matcher.matches("this", decodeEntityPredicate("""{"minecraft:periodic_tick":0}""")) shouldBe false
+        matcher.matches(
+            "this",
+            decodeEntityPredicate("""{"minecraft:entity_type":"#minecraft:missing_entity_types"}"""),
+        ) shouldBe false
+        matcher.matches(
+            "undead",
+            decodeEntityPredicate("""{"minecraft:entity_type":"#minecraft:undead"}"""),
+        ) shouldBe true
         matcher.matches(
             "this",
             decodeEntityPredicate("""
@@ -239,6 +259,8 @@ val VanillaLootContextTests by testSuite("Vanilla loot contexts") {
         equippedPig.setEquipment(EquipmentSlot.MAIN_HAND, ItemStack.of(Material.IRON_SWORD))
         equippedPig.setEquipment(EquipmentSlot.OFF_HAND, ItemStack.of(Material.SHIELD))
         equippedPig.setEquipment(EquipmentSlot.HELMET, ItemStack.of(Material.IRON_HELMET))
+        listOf(EquipmentSlot.CHESTPLATE, EquipmentSlot.LEGGINGS, EquipmentSlot.BOOTS, EquipmentSlot.BODY, EquipmentSlot.SADDLE)
+            .forEach { equippedPig.setEquipment(it, ItemStack.of(Material.STICK)) }
         equippedPig.set(DataComponents.CUSTOM_NAME, Component.text("named pig"))
         equippedPig.set(
             DataComponents.CUSTOM_DATA,
@@ -259,6 +281,14 @@ val VanillaLootContextTests by testSuite("Vanilla loot contexts") {
                 PotionEffect.fromKey("minecraft:speed") ?: error("Missing vanilla speed effect"),
                 2,
                 200,
+                Potion.AMBIENT_FLAG.toInt() or Potion.ICON_FLAG.toInt(),
+            ),
+        )
+        equippedPig.addEffect(
+            Potion(
+                PotionEffect.fromKey("minecraft:fire_resistance") ?: error("Missing vanilla fire resistance effect"),
+                0,
+                -1,
                 Potion.AMBIENT_FLAG.toInt() or Potion.ICON_FLAG.toInt(),
             ),
         )
@@ -315,6 +345,20 @@ val VanillaLootContextTests by testSuite("Vanilla loot contexts") {
             "equipped",
             decodeEntityPredicate("""{"minecraft:slots":{"main_hand":{"items":"minecraft:iron_sword"}}}"""),
         ) shouldBe true
+        listOf("chest", "legs", "feet", "body", "saddle").forEach { slot ->
+            matcher.matches(
+                "equipped",
+                decodeEntityPredicate("""{"minecraft:equipment":{"$slot":{"items":"minecraft:stick"}}}"""),
+            ) shouldBe true
+        }
+        matcher.matches(
+            "equipped",
+            decodeEntityPredicate("""{"minecraft:equipment":{"unknown_slot":{"items":"minecraft:stick"}}}"""),
+        ) shouldBe false
+        matcher.matches(
+            "rider",
+            decodeEntityPredicate("""{"minecraft:equipment":{"mainhand":{"items":"minecraft:stick"}}}"""),
+        ) shouldBe false
         matcher.matches(
             "equipped",
             decodeEntityPredicate("""
@@ -349,6 +393,10 @@ val VanillaLootContextTests by testSuite("Vanilla loot contexts") {
             "equipped",
             decodeEntityPredicate("""{"minecraft:effects":{"minecraft:strength":{}}}"""),
         ) shouldBe false
+        matcher.matches(
+            "equipped",
+            decodeEntityPredicate("""{"minecraft:effects":{"minecraft:fire_resistance":{"duration":-1}}}"""),
+        ) shouldBe true
         listOf(
             "\"amplifier\":3",
             "\"duration\":{\"min\":1000}",
@@ -467,6 +515,26 @@ val VanillaLootContextTests by testSuite("Vanilla loot contexts") {
             mapOf(rawKey to EntityPredicateValue.Raw(rawKey, rawValue("{}"))),
         )
         shouldThrow<IllegalStateException> { matcher.matches("pig", rawPredicate) }
+        val nestedKey = Key.key("minecraft:owner")
+        val unsupportedNestedPredicate = EntityPredicate(
+            mapOf(
+                nestedKey to EntityPredicateValue.SubPredicate(
+                    nestedKey,
+                    EntityNestedPredicate(EntityPredicate(emptyMap())),
+                ),
+            ),
+        )
+        shouldThrow<IllegalStateException> { matcher.matches("pig", unsupportedNestedPredicate) }
+        val customKey = Key.key("loot_test:custom")
+        val unsupportedCustomPredicate = EntityPredicate(
+            mapOf(
+                customKey to EntityPredicateValue.SubPredicate(
+                    customKey,
+                    object : EntityPredicateSubPredicate {},
+                ),
+            ),
+        )
+        shouldThrow<IllegalStateException> { matcher.matches("pig", unsupportedCustomPredicate) }
     }
 
     envTest("location predicates evaluate fluid, light, biome, sky visibility, and smoke") { env ->

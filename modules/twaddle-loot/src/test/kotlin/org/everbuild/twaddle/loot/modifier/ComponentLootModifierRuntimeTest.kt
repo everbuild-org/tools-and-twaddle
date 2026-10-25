@@ -2,6 +2,7 @@ package org.everbuild.twaddle.loot.modifier
 
 import com.google.gson.JsonParser
 import de.infix.testBalloon.framework.core.testSuite
+import io.kotest.assertions.throwables.shouldThrow
 import io.kotest.matchers.shouldBe
 import io.kotest.matchers.shouldNotBe
 import net.kyori.adventure.key.Key
@@ -167,6 +168,24 @@ val componentLootModifierRuntimeTests by testSuite("Loot component modifier runt
         sword.get(DataComponents.ADDITIONAL_TRADE_COST) shouldNotBe null
         book.material() shouldBe Material.ENCHANTED_BOOK
         book.get(DataComponents.STORED_ENCHANTMENTS)?.level(sharpnessKey) shouldNotBe 0
+
+        val stick = ItemStack.of(Material.STICK)
+        apply(EnchantRandomlyLootModifier(options = "minecraft:sharpness"), stick, context) shouldBe stick
+        val incompatibleAllowed = apply(
+            EnchantRandomlyLootModifier(options = "minecraft:sharpness", onlyCompatible = false),
+            stick,
+            context,
+        )
+        incompatibleAllowed.get(DataComponents.ENCHANTMENTS)?.level(sharpnessKey) shouldNotBe 0
+
+        val taggedBook = apply(
+            EnchantRandomlyLootModifier(options = "#minecraft:exclusive_set/armor"),
+            ItemStack.of(Material.BOOK),
+            context,
+            Random(42),
+        )
+        taggedBook.material() shouldBe Material.ENCHANTED_BOOK
+        taggedBook.get(DataComponents.STORED_ENCHANTMENTS) shouldNotBe null
     }
 
     envTest("enchant_with_levels evaluates levels, applies an option, and gates the extra cost component") { env ->
@@ -203,5 +222,36 @@ val componentLootModifierRuntimeTests by testSuite("Loot component modifier runt
         val book = apply(modifier, ItemStack.of(Material.BOOK), context, Random(24))
         book.material() shouldBe Material.ENCHANTED_BOOK
         book.get(DataComponents.STORED_ENCHANTMENTS)?.level(sharpnessKey) shouldNotBe 0
+
+        val unrestricted = apply(
+            EnchantWithLevelsLootModifier(levels = decodeIntProvider("60")),
+            ItemStack.of(Material.DIAMOND_SWORD),
+            context,
+            Random(25),
+        )
+        unrestricted.get(DataComponents.ENCHANTMENTS) shouldNotBe null
+
+        val exclusiveSet = apply(
+            EnchantWithLevelsLootModifier(
+                levels = decodeIntProvider("30"),
+                options = "#minecraft:exclusive_set/damage",
+            ),
+            ItemStack.of(Material.DIAMOND_SWORD),
+            context,
+            Random(27),
+        )
+        exclusiveSet.get(DataComponents.ENCHANTMENTS) shouldNotBe null
+
+        shouldThrow<IllegalStateException> {
+            apply(modifier.copy(options = "#minecraft:missing_enchantments"), ItemStack.of(Material.DIAMOND_SWORD), context)
+        }
+        shouldThrow<IllegalStateException> {
+            apply(modifier.copy(options = "minecraft:missing_enchantment"), ItemStack.of(Material.DIAMOND_SWORD), context)
+        }
+
+        val noCostContext = context.withLootAdditionalTradeCostAllowed(false)
+        val noCostModifier = modifier.copy(includeAdditionalCostComponent = true)
+        val noCostResult = apply(noCostModifier, ItemStack.of(Material.DIAMOND_SWORD), noCostContext, Random(26))
+        noCostResult.get(DataComponents.ADDITIONAL_TRADE_COST) shouldBe null
     }
 }
