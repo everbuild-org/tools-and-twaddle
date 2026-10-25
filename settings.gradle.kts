@@ -2,6 +2,12 @@ dependencyResolutionManagement {
     @Suppress("UnstableApiUsage")
     repositories {
         mavenCentral()
+        maven(url = "https://central.sonatype.com/repository/maven-snapshots/") {
+            content {
+                includeModule("net.minestom", "minestom")
+                includeModule("net.minestom", "testing")
+            }
+        }
     }
 }
 

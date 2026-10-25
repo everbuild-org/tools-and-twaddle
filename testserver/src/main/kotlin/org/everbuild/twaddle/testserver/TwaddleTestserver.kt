@@ -11,6 +11,7 @@ import net.minestom.server.coordinate.Pos
 import net.minestom.server.entity.GameMode
 import net.minestom.server.entity.Player
 import net.minestom.server.event.player.AsyncPlayerConfigurationEvent
+import net.minestom.server.event.player.PlayerBlockBreakEvent
 import net.minestom.server.event.player.PlayerGameModeRequestEvent
 import net.minestom.server.event.server.ServerListPingEvent
 import net.minestom.server.instance.LightingChunk
@@ -20,8 +21,6 @@ import org.everbuild.twaddle.structured_logging.field
 import org.everbuild.twaddle.structured_logging.info
 import org.everbuild.twaddle.structured_logging.logger
 import org.everbuild.twaddle.common.minestom.listen
-import org.everbuild.twaddle.data_driven.DataDriven
-import org.everbuild.twaddle.data_driven.source.DataSources
 import org.everbuild.twaddle.lifecycle.runTwaddleApplication
 
 val logger = logger()
@@ -38,6 +37,7 @@ class TestCommand : Command("test") {
 
 suspend fun main() = runTwaddleApplication { cx ->
     val server = MinecraftServer.init(Auth.Online())
+    val blockLootTables = BlockLootTables.load()
 
     val instance = MinecraftServer.getInstanceManager().createInstanceContainer()
     instance.setGenerator { unit ->
@@ -52,19 +52,16 @@ suspend fun main() = runTwaddleApplication { cx ->
     MinecraftServer.getCommandManager()
         .register(TestCommand())
 
-    DataSources {
-
-    }
-
     val pngFileBytes = TestCommand::class.java.classLoader.getResourceAsStream("server-icon.png")!!.readAllBytes()
 
     MinecraftServer.getGlobalEventHandler()
         .listen { event: AsyncPlayerConfigurationEvent ->
             event.spawningInstance = instance
             event.player.respawnPoint = Pos(0.0, 66.0, 0.0)
-            event.player.gameMode = GameMode.CREATIVE
+            event.player.gameMode = GameMode.SURVIVAL
             event.player.permissionLevel = 4
         }
+        .listen { event: PlayerBlockBreakEvent -> blockLootTables.dropFor(event) }
         .listen { event: PlayerGameModeRequestEvent ->
             event.player.gameMode = event.requestedGameMode
         }

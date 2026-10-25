@@ -14,6 +14,5 @@ dependencies {
 }
 
 sourceSets.named("test") {
-    resources.srcDir(rootProject.file("text-fixtures/number-providers/26.3"))
     resources.srcDir(rootProject.file("text-fixtures/datapack-primitives/26.3"))
 }

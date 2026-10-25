@@ -4,6 +4,7 @@ import net.kyori.adventure.key.Key
 import net.minestom.server.codec.Codec
 import net.minestom.server.codec.StructCodec
 import net.minestom.server.item.Material
+import net.minestom.server.item.ItemStack
 import net.minestom.server.registry.TagKey
 import org.everbuild.twaddle.datapack_primitives.predicate.ContextPredicate
 import org.everbuild.twaddle.loot.entry.LootEntry
@@ -11,6 +12,9 @@ import org.everbuild.twaddle.loot.entry.LootEntryData
 import org.everbuild.twaddle.loot.entry.LootEntryKeys
 import org.everbuild.twaddle.loot.entry.LootEntryType
 import org.everbuild.twaddle.loot.entry.lootEntryCodec
+import org.everbuild.twaddle.loot.entry.LootEntryEvaluation
+import org.everbuild.twaddle.loot.entry.LootEntryExpansion
+import org.everbuild.twaddle.loot.entry.LootEntryCandidate
 import org.everbuild.twaddle.loot.modifier.LootModifier
 
 /** Entry backed by a tag from Minestom's native material registry. */
@@ -52,5 +56,24 @@ internal class TagLootEntryType : LootEntryType {
         return lootEntryCodec(dataCodec, predicateCodec, modifierCodec) {
             it.value as TagLootEntryData
         }
+    }
+
+    override fun expand(entry: LootEntry, evaluation: LootEntryEvaluation): LootEntryExpansion {
+        val tag = entry.value as TagLootEntryData
+        val items = tag.resolveItems()
+        val candidates = if (tag.expand) {
+            items.map { material ->
+                LootEntryCandidate(entry.weight, entry.quality, emptyList()) { _, _ ->
+                    listOf(ItemStack.of(material))
+                }
+            }
+        } else {
+            listOf(
+                LootEntryCandidate(entry.weight, entry.quality, entry.modifiers) { _, _ ->
+                    items.map(ItemStack::of)
+                },
+            )
+        }
+        return LootEntryExpansion(items.isNotEmpty(), candidates)
     }
 }

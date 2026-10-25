@@ -2,6 +2,7 @@ package org.everbuild.twaddle.loot.entry.impl
 
 import net.minestom.server.codec.Codec
 import net.minestom.server.codec.StructCodec
+import net.minestom.server.item.ItemStack
 import org.everbuild.twaddle.datapack_primitives.DatapackPrimitives
 import org.everbuild.twaddle.datapack_primitives.predicate.ContextPredicate
 import org.everbuild.twaddle.datapack_primitives.slot_source.SlotSource
@@ -10,6 +11,8 @@ import org.everbuild.twaddle.loot.entry.LootEntryData
 import org.everbuild.twaddle.loot.entry.LootEntryKeys
 import org.everbuild.twaddle.loot.entry.LootEntryType
 import org.everbuild.twaddle.loot.entry.lootEntryCodec
+import org.everbuild.twaddle.loot.entry.LootEntryEvaluation
+import org.everbuild.twaddle.loot.entry.LootEntryExpansion
 import org.everbuild.twaddle.loot.modifier.LootModifier
 
 /** Entry that produces the item stacks selected by a slot source. */
@@ -43,4 +46,9 @@ internal class SlotsLootEntryType : LootEntryType {
             it.value as SlotsLootEntryData
         }
     }
+
+    override fun expand(entry: LootEntry, evaluation: LootEntryEvaluation): LootEntryExpansion =
+        evaluation.candidate(entry) { context, _ ->
+            (entry.value as SlotsLootEntryData).slotSource.evaluate(context).filterNot(ItemStack::isAir)
+        }
 }
