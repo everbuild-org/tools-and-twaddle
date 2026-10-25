@@ -94,6 +94,51 @@ val countLootModifierRuntimeTests by testSuite("Loot count modifier runtime") {
         random.nextInt() shouldBe expectedNext
     }
 
+    test("apply_bonus validates formula names and parameters") {
+        val item = ItemStack.of(Material.DIAMOND)
+        val enchantedContext = modifierContext(enchantmentLevel = 1)
+
+        shouldThrow<IllegalArgumentException> {
+            apply(ApplyBonusLootModifier(fortune, "minecraft:binomial_with_bonus_count"), item, enchantedContext)
+        }
+        shouldThrow<IllegalArgumentException> {
+            apply(
+                ApplyBonusLootModifier(
+                    fortune,
+                    "minecraft:binomial_with_bonus_count",
+                    ApplyBonusParameters(probability = 0.5f),
+                ),
+                item,
+                enchantedContext,
+            )
+        }
+        shouldThrow<IllegalArgumentException> {
+            apply(
+                ApplyBonusLootModifier(
+                    fortune,
+                    "minecraft:binomial_with_bonus_count",
+                    ApplyBonusParameters(extra = 0, probability = 1.1f),
+                ),
+                item,
+                enchantedContext,
+            )
+        }
+        shouldThrow<IllegalArgumentException> {
+            apply(
+                ApplyBonusLootModifier(
+                    fortune,
+                    "minecraft:uniform_bonus_count",
+                    ApplyBonusParameters(bonusMultiplier = -1),
+                ),
+                item,
+                enchantedContext,
+            )
+        }
+        shouldThrow<IllegalStateException> {
+            apply(ApplyBonusLootModifier(fortune, "minecraft:unknown"), item, enchantedContext)
+        }
+    }
+
     test("enchanted_count_increase floors the per-level bonus and applies its optional cap") {
         val count = decodeProvider(primitives.floatNumberProviderCodec, "0.4")
         val item = ItemStack.of(Material.BLAZE_ROD, 2)

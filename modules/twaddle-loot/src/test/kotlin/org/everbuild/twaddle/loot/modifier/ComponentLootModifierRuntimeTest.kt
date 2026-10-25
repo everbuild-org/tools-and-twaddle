@@ -185,4 +185,23 @@ val componentLootModifierRuntimeTests by testSuite("Loot component modifier runt
         enchantments.level(sharpnessKey) shouldNotBe 0
         result.get(DataComponents.ADDITIONAL_TRADE_COST) shouldBe 30
     }
+
+    envTest("enchant_with_levels handles items without eligible enchantments and converts books") { env ->
+        val context = context().withLootModifierRegistries(env.process().registries())
+        val levels = decodeIntProvider("30")
+        val modifier = EnchantWithLevelsLootModifier(levels, options = "minecraft:sharpness")
+
+        val stick = ItemStack.of(Material.STICK)
+        apply(modifier, stick, context) shouldBe stick
+
+        val disabledSword = ItemStack.of(Material.DIAMOND_SWORD).with(DataComponents.ENCHANTABLE, 0)
+        apply(modifier, disabledSword, context) shouldBe disabledSword
+
+        val ineligibleItem = ItemStack.of(Material.STICK).with(DataComponents.ENCHANTABLE, 10)
+        apply(modifier, ineligibleItem, context) shouldBe ineligibleItem
+
+        val book = apply(modifier, ItemStack.of(Material.BOOK), context, Random(24))
+        book.material() shouldBe Material.ENCHANTED_BOOK
+        book.get(DataComponents.STORED_ENCHANTMENTS)?.level(sharpnessKey) shouldNotBe 0
+    }
 }
