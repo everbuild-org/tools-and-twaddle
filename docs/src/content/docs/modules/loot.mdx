@@ -1,22 +1,397 @@
 ---
 title: Loot tables
-description: Decode and evaluate loot tables with application-owned datapack context.
+description: Decode and evaluate Minecraft loot tables with Minestom context factories.
 ---
+import { Tabs, TabItem } from '@astrojs/starlight/components';
 
-The `twaddle-loot` module provides codecs and runtime evaluation for Minecraft loot tables. It uses the shared
-`twaddle-datapack-primitives` number providers, predicates, and slot sources. Loot tables remain ordinary values; the
-application owns data loading, table lookup, and server-specific behavior.
+`twaddle-loot` provides a loot-table data model, recursive codec builder, vanilla entry and modifier registrations,
+and an evaluator that returns generated `ItemStack`s. It builds on
+[`twaddle-datapack-primitives`](./datapack-primitives/), using its number providers, context predicates, and slot
+sources. Minestom is a compile-only dependency; the server application supplies Minestom at runtime.
 
-## Build the codec
+The evaluator does not spawn drops, mutate inventories, or own a data pack. It reads a `LootTable`, evaluates it against
+a `DataContext`, and returns the resulting stacks for the caller to deliver.
 
-Register the vanilla entry and modifier types and pass their registries to `createLootTableCodec`:
+## Add the module
+
+Use the same published Twaddle version as the rest of your application. Replace `TWADDLE_VERSION` with a version listed
+in [GitHub Releases](https://github.com/everbuild-org/tools-and-twaddle/releases).
+
+```kotlin title="build.gradle.kts"
+dependencies {
+    implementation("org.everbuild.twaddle:twaddle-loot:TWADDLE_VERSION")
+}
+```
+
+The loot artifact brings `twaddle-datapack-primitives` as an API dependency. Add that module separately only if your
+application also uses its provider, predicate, or slot-source APIs outside loot tables.
+
+## Create vanilla support
+
+`VanillaLootSupport.vanilla()` returns the shared configuration containing the implemented vanilla entry and modifier
+types. It also provides the connected loot-table codec and evaluator. `VanillaLootSupport.create()` constructs an
+independent copy of that vanilla configuration.
+
+<Tabs syncKey="jvm-language">
+<TabItem label="Kotlin">
 
 ```kotlin
-val primitives = DatapackPrimitives.vanilla()
-val entryTypes = createVanillaLootEntryTypeRegistry()
-val modifierTypes = createVanillaLootModifierTypeRegistry()
+import org.everbuild.twaddle.loot.VanillaLootSupport
 
-val lootTableCodec = createLootTableCodec(
+val loot = VanillaLootSupport.vanilla()
+val lootTableCodec = loot.codec
+val evaluator = loot.evaluator
+```
+
+</TabItem>
+<TabItem label="Java">
+
+```java
+import org.everbuild.twaddle.loot.VanillaLootSupport;
+
+VanillaLootSupport loot = VanillaLootSupport.vanilla();
+var lootTableCodec = loot.getCodec();
+var evaluator = loot.getEvaluator();
+```
+
+</TabItem>
+</Tabs>
+
+The vanilla registrations currently include these loot entry types:
+
+| Entry type | Purpose |
+| --- | --- |
+| `item` | Produce a Minestom material by its namespaced key. |
+| `empty` | Succeed without producing an item. |
+| `group` | Expand every child entry. |
+| `alternatives` | Use the first child entry that succeeds. |
+| `sequence` | Expand children in order and stop after a child fails. |
+| `loot_table` | Resolve and evaluate a referenced loot table. |
+| `dynamic` | Delegate a named dynamic drop to the context's resolver. |
+| `tag` | Produce the materials in a Minestom-native item tag. |
+| `slots` | Produce stacks selected by a datapack slot source. |
+
+The modifier registry currently includes `set_count`, `set_potion`, `apply_bonus`, `copy_components`, `copy_state`,
+`discard`, `enchant_randomly`, `enchant_with_levels`, `enchanted_count_increase`, `exploration_map`, `explosion_decay`,
+`filtered`, `furnace_smelt`, `limit_count`, `set_components`, `set_damage`, `set_enchantments`, `set_instrument`,
+`set_name`, `set_ominous_bottle_amplifier`, and `set_stew_effect`. These are the implemented registrations, not a
+promise that every type in every Minecraft data version is supported. An unregistered `type` fails decoding.
+
+## Decode and evaluate a table
+
+Loot tables use Minestom's `Codec` API and JSON transcoder. This small table shows the required pool fields and an item
+entry; the evaluator's return value can then be dropped, stored, or otherwise handled by the server.
+
+```json
+{
+  "type": "minecraft:block",
+  "pools": [
+    {
+      "rolls": 1,
+      "entries": [
+        {
+          "type": "minecraft:item",
+          "name": "minecraft:diamond"
+        }
+      ]
+    }
+  ]
+}
+```
+
+<Tabs syncKey="jvm-language">
+<TabItem label="Kotlin">
+
+```kotlin
+import com.google.gson.JsonParser
+import net.minestom.server.codec.Codec
+import net.minestom.server.codec.Result
+import net.minestom.server.codec.Transcoder
+import org.everbuild.twaddle.datapack_primitives.context.DataContext
+import org.everbuild.twaddle.loot.LootTable
+import org.everbuild.twaddle.loot.VanillaLootSupport
+
+fun <T> decode(codec: Codec<T>, json: String): T = when (
+    val result = codec.decode(Transcoder.JSON, JsonParser.parseString(json))
+) {
+    is Result.Ok -> result.value
+    is Result.Error -> error(result.message)
+}
+
+val support = VanillaLootSupport.vanilla()
+val json = """{"type":"minecraft:block","pools":[{"rolls":1,"entries":[{"type":"minecraft:item","name":"minecraft:diamond"}]}]}"""
+val table: LootTable = decode(support.codec, json)
+val drops = support.evaluator.generate(table, DataContext())
+```
+
+</TabItem>
+<TabItem label="Java">
+
+```java
+import com.google.gson.JsonParser;
+import net.minestom.server.codec.Codec;
+import net.minestom.server.codec.Result;
+import net.minestom.server.codec.Transcoder;
+import org.everbuild.twaddle.datapack_primitives.context.DataContext;
+import org.everbuild.twaddle.loot.LootTable;
+import org.everbuild.twaddle.loot.VanillaLootSupport;
+
+static <T> T decode(Codec<T> codec, String json) {
+    Result<T> result = codec.decode(Transcoder.JSON, JsonParser.parseString(json));
+    if (result instanceof Result.Ok<?> ok) {
+        @SuppressWarnings("unchecked")
+        T value = (T) ok.value();
+        return value;
+    }
+    throw new IllegalArgumentException(((Result.Error<?>) result).message());
+}
+
+VanillaLootSupport support = VanillaLootSupport.vanilla();
+String json = """
+    {"type":"minecraft:block","pools":[{"rolls":1,"entries":[{"type":"minecraft:item","name":"minecraft:diamond"}]}]}
+    """;
+LootTable table = decode(support.getCodec(), json);
+var drops = support.getEvaluator().generate(table, new DataContext());
+```
+
+</TabItem>
+</Tabs>
+
+`generate(table, context)` uses a fresh `Random` unless the table has a `random_sequence`. The overload with an explicit
+`Random` is useful for deterministic unit tests. If a table declares a named sequence, evaluation gets that sequence
+from `RandomSequenceController` in the context instead of using the passed random directly.
+
+### Table and pool fields
+
+The table codec reads these fields:
+
+| JSON field | Meaning |
+| --- | --- |
+| `type` | Loot context type identifier as a string; defaults to `generic`. |
+| `pools` | Ordered list of pools; defaults to an empty list. |
+| `random_sequence` | Optional namespaced random sequence key. |
+| `modifier` | One modifier or a list of modifiers applied to the final generated items. |
+
+Every pool requires `rolls` and `entries`. Optional `bonus_rolls` is a float number provider; `condition` accepts one
+predicate or a list; `modifier` accepts one modifier or a list. Entries support `weight`, `quality`, `condition`, and
+`modifier` in addition to fields specific to their registered type. Conditions and modifiers are evaluated in order
+through the shared context and random source.
+
+The loot codec uses the currently implemented `LootTable` shape. The table's `type` string is retained as data; it does
+not choose or validate the context for you. Select an appropriate `DataContext` factory for the operation.
+
+## Use a Minestom context
+
+The vanilla factories attach the values and default Minestom matchers that are available for common loot operations.
+Kotlin calls them as `DataContext` companion extensions. Java can call their `@JvmStatic` wrappers on
+`VanillaLootContexts`.
+
+<Tabs syncKey="jvm-language">
+<TabItem label="Kotlin">
+
+```kotlin
+import org.everbuild.twaddle.datapack_primitives.context.DataContext
+import org.everbuild.twaddle.loot.VanillaLootSupport
+import org.everbuild.twaddle.loot.blockBreak
+
+val support = VanillaLootSupport.vanilla()
+val context = DataContext.blockBreak(
+    instance = instance,
+    block = block,
+    blockPosition = position,
+    support = support,
+    tool = player.itemInMainHand,
+    entity = player,
+)
+val drops = support.evaluator.generate(table, context)
+```
+
+For a `PlayerBlockBreakEvent`, use `DataContext.blockBreak(event)`. It takes the block, position, player, and held tool
+from the event.
+
+</TabItem>
+<TabItem label="Java">
+
+```java
+import org.everbuild.twaddle.loot.VanillaLootContexts;
+import org.everbuild.twaddle.loot.VanillaLootSupport;
+
+VanillaLootSupport support = VanillaLootSupport.vanilla();
+var context = VanillaLootContexts.blockBreak(event);
+var drops = support.getEvaluator().generate(table, context);
+```
+
+The wrapper has overloads for supplying `VanillaLootSupport`, `RandomSequenceController`, loot luck, explosion radius,
+and a structure matcher. Kotlin can name those optional arguments; Java can use the matching explicit overload.
+
+</TabItem>
+</Tabs>
+
+Available context factories are:
+
+| Operation | Kotlin factory | Java entry point | Notes |
+| --- | --- | --- | --- |
+| Block break | `DataContext.blockBreak(...)` | `VanillaLootContexts.blockBreak(...)` | A direct overload accepts instance, block, position, tool, and entity. The event overload reads the player and held item. |
+| Entity death | `DataContext.entityDeath(...)` | `VanillaLootContexts.entityDeath(...)` | Pass `Damage` when available; `EntityDeathEvent` does not include the killing damage. |
+| Container loot | `DataContext.containerLoot(...)` | `VanillaLootContexts.containerLoot(...)` | The event does not identify the container block position, so pass it explicitly. |
+| Fishing | `DataContext.fishing(...)` | `VanillaLootContexts.fishing(...)` | Accepts a fishing-hook entity and optional tool/origin overrides. |
+| Block interaction | `DataContext.blockInteract(...)` | `VanillaLootContexts.blockInteract(...)` | Event overload derives the player, hand, block, and position. |
+
+The factories set the environment, loot modifier registries, random-sequence controller, loot luck, and default item,
+entity, and location predicate matchers. Block contexts also provide block-state access, explosion radius,
+component-source access, a dynamic loot resolver, and a block predicate matcher. Tool-dependent factories set the
+enchantment level from the supplied tool and provide a tool matcher when Minestom access can do so. Explicit values
+added to a context take precedence over these factory defaults.
+
+The simple factory overloads create a `DefaultRandomSequenceController`. It creates one unseeded `Random` per sequence
+key for the life of that controller. This is convenient for ordinary use; inject your own controller when you need
+world-seeded Minecraft sequence behavior or deterministic tests.
+
+## Supply data to a custom context
+
+Use `DataContext()` when you are not using a Minestom world factory. Providers, predicates, entries, and modifiers
+read the context keys they need. Missing required values fail at evaluation time with a message naming the key or
+resolver. In Kotlin, use the provided `with...` extensions; Java can call `withBehaviour(key, value)` using the
+generated getter for a top-level context key.
+
+For example, a referenced `minecraft:loot_table` entry requires a resolver:
+
+<Tabs syncKey="jvm-language">
+<TabItem label="Kotlin">
+
+```kotlin
+import net.kyori.adventure.key.Key
+import org.everbuild.twaddle.datapack_primitives.context.DataContext
+import org.everbuild.twaddle.loot.LootTable
+import org.everbuild.twaddle.loot.withLootTableResolver
+
+val loadedTables: Map<Key, LootTable> = loadTables()
+val context = DataContext().withLootTableResolver { key -> loadedTables[key] }
+```
+
+</TabItem>
+<TabItem label="Java">
+
+```java
+import net.kyori.adventure.key.Key;
+import org.everbuild.twaddle.datapack_primitives.context.DataContext;
+import org.everbuild.twaddle.loot.LootTable;
+import org.everbuild.twaddle.loot.LootRuntimeAccessKt;
+
+Map<Key, LootTable> loadedTables = loadTables();
+DataContext context = new DataContext();
+context.withBehaviour(
+    LootRuntimeAccessKt.getLootTableResolverContext(),
+    loadedTables::get
+);
+```
+
+</TabItem>
+</Tabs>
+
+`withDynamicLootResolver` supplies names such as `minecraft:contents` that are reached through `dynamic` entries.
+The vanilla block context installs a Minestom implementation for block component contents. A manually created context
+must install a resolver if it can evaluate a dynamic entry. `withLootLuck` sets the luck value used for pool bonus rolls
+and quality-adjusted entry weights.
+
+Other optional context integrations cover block-state access, furnace recipes, exploration-map creation, item
+component sources, and custom loot modifier registries. The loot guide keeps these as caller-owned services because
+Minestom does not own every backing system (for example, server recipes, structure search, or map instances).
+Install them with the corresponding `with...` method from `org.everbuild.twaddle.loot.modifier` or
+`org.everbuild.twaddle.loot.modifier.context`. The vanilla context factories provide defaults only for data they can
+read from Minestom.
+
+## Load tables from data files
+
+`twaddle-loot` decodes tables but does not discover data-pack files. Use `twaddle-data-driven` to load a folder, ZIP, or
+classpath source into `DataDriven<LootTable>`. The table key is derived from the path; see
+[Data-driven definitions](./data-driven/) for `PackFolderPattern`, source setup, overrides, and reload behavior.
+
+<Tabs syncKey="jvm-language">
+<TabItem label="Kotlin">
+
+```kotlin
+import net.kyori.adventure.key.Key
+import org.everbuild.twaddle.data_driven.DataDriven
+import org.everbuild.twaddle.data_driven.loader.CodecLoader
+import org.everbuild.twaddle.data_driven.pattern.PackFolderPattern
+import org.everbuild.twaddle.data_driven.resource.ClasspathSource
+import org.everbuild.twaddle.data_driven.source.DataSources
+import org.everbuild.twaddle.loot.LootTable
+import org.everbuild.twaddle.loot.VanillaLootSupport
+
+val tables = DataDriven<LootTable>()
+val source = ClasspathSource(MyPlugin::class)
+val tableFiles = PackFolderPattern().resource("loot_table", ".json")
+val reloader = DataSources {
+    tables via { addSource(source, tableFiles, CodecLoader(VanillaLootSupport.vanilla().codec)) }
+}
+val result = reloader.reloadBlocking()
+check(result.successful)
+val stone = tables[Key.key("minecraft:blocks/stone")]
+```
+
+This optional example needs the `twaddle-data-driven` dependency. Its data paths follow the pack convention:
+`data/<namespace>/loot_table/<path>.json` becomes `<namespace>:<path>`.
+
+</TabItem>
+<TabItem label="Java">
+
+```java
+import net.kyori.adventure.key.Key;
+import org.everbuild.twaddle.data_driven.DataDriven;
+import org.everbuild.twaddle.data_driven.loader.CodecLoader;
+import org.everbuild.twaddle.data_driven.pattern.PackFolderPattern;
+import org.everbuild.twaddle.data_driven.resource.FolderSource;
+import org.everbuild.twaddle.data_driven.source.DataSources;
+import org.everbuild.twaddle.loot.LootTable;
+import org.everbuild.twaddle.loot.VanillaLootSupport;
+import java.nio.file.Path;
+
+DataDriven<LootTable> tables = new DataDriven<>();
+var source = new FolderSource(Path.of("./data"));
+var pattern = new PackFolderPattern().resource("loot_table", ".json");
+var codec = VanillaLootSupport.vanilla().getCodec();
+DataSources reloader = DataSources.create(builder ->
+    builder.addRegistry(tables, entries -> entries.addSource(source, pattern, new CodecLoader<>(codec)))
+);
+var result = reloader.reloadBlocking();
+if (!result.getSuccessful()) throw new IllegalStateException("Loot table load failed: " + result);
+LootTable stone = tables.get(Key.key("minecraft:blocks/stone"));
+```
+
+The data-driven module is a separate dependency. Its Java builders and source adapters are documented on the
+[data-driven page](./data-driven/).
+
+</TabItem>
+</Tabs>
+
+## Extend registrations
+
+`LootEntryType` and `LootModifierType` define extension points for additional types. An entry type provides a struct
+codec and expands its decoded entry into candidates. A modifier type provides a struct codec and transforms an item,
+returning `null` to discard it. To add a type, create the vanilla dynamic registries, register your type under a new
+namespaced key, then build the codec and evaluator with those same registries:
+
+<Tabs syncKey="jvm-language">
+<TabItem label="Kotlin">
+
+```kotlin
+import net.kyori.adventure.key.Key
+import org.everbuild.twaddle.datapack_primitives.DatapackPrimitives
+import org.everbuild.twaddle.loot.LootTableEvaluator
+import org.everbuild.twaddle.loot.createLootTableCodec
+import org.everbuild.twaddle.loot.entry.createVanillaLootEntryTypeRegistry
+import org.everbuild.twaddle.loot.modifier.createVanillaLootModifierTypeRegistry
+
+val primitives = DatapackPrimitives.vanilla()
+val entryTypes = createVanillaLootEntryTypeRegistry().also {
+    it.register(Key.key("example:custom_entry"), CustomLootEntryType())
+}
+val modifierTypes = createVanillaLootModifierTypeRegistry().also {
+    it.register(Key.key("example:custom_modifier"), CustomLootModifierType())
+}
+val codec = createLootTableCodec(
     primitives.contextPredicateCodec,
     entryTypes,
     modifierTypes,
@@ -24,62 +399,44 @@ val lootTableCodec = createLootTableCodec(
     primitives.floatNumberProviderCodec,
     primitives.slotSourceCodec,
 )
-```
-
-The codec supports the registered vanilla entry and modifier types, including inline or keyed `minecraft:loot_table`
-entries. It decodes the current Minecraft data format represented by this module's fixtures. Unknown type IDs fail to
-decode unless the application registers a codec for them.
-
-## Evaluate a table
-
-`LootTableEvaluator` uses the same entry and modifier registries. Supply a `DataContext` with values required by the
-table's predicates, number providers, and modifiers:
-
-```kotlin
 val evaluator = LootTableEvaluator(entryTypes, modifierTypes)
-val context = DataContext(hashMapOf())
-val drops = evaluator.generate(table, context, Random())
 ```
 
-The evaluator applies entry and pool selection, luck-adjusted weights and bonus rolls, nested tables, dynamic drops,
-modifiers, and named random sequences. If a table declares `random_sequence`, add a `RandomSequenceController` to the
-context. Nested table references use `withLootTableResolver`; dynamic entries use `withDynamicLootResolver`.
+</TabItem>
+<TabItem label="Java">
 
-## Provide server behavior
+```java
+import net.kyori.adventure.key.Key;
+import org.everbuild.twaddle.datapack_primitives.DatapackPrimitives;
+import org.everbuild.twaddle.loot.LootTableCodecBuilderKt;
+import org.everbuild.twaddle.loot.LootTableEvaluator;
+import org.everbuild.twaddle.loot.entry.VanillaLootEntryTypesKt;
+import org.everbuild.twaddle.loot.modifier.VanillaLootModifiersKt;
 
-The application remains responsible for behavior that depends on a world, inventory, or server registries. Add the
-corresponding access object to `DataContext` when a table can use these modifiers:
+DatapackPrimitives primitives = DatapackPrimitives.vanilla();
+var entryTypes = VanillaLootEntryTypesKt.createVanillaLootEntryTypeRegistry();
+entryTypes.register(Key.key("example:custom_entry"), new CustomLootEntryType());
+var modifierTypes = VanillaLootModifiersKt.createVanillaLootModifierTypeRegistry();
+modifierTypes.register(Key.key("example:custom_modifier"), new CustomLootModifierType());
+var codec = LootTableCodecBuilderKt.createLootTableCodec(
+    primitives.getContextPredicateCodec(),
+    entryTypes,
+    modifierTypes,
+    primitives.getIntNumberProviderCodec(),
+    primitives.getFloatNumberProviderCodec(),
+    primitives.getSlotSourceCodec()
+);
+var evaluator = new LootTableEvaluator(entryTypes, modifierTypes);
+```
 
-- `copy_state` reads the source block state through `withLootBlockStateAccess`.
-- `furnace_smelt` resolves a smelting result through `withFurnaceSmeltAccess`.
-- `exploration_map` searches for a destination and creates map data through `withExplorationMapAccess`.
-- `copy_components` reads its named component source through `withLootComponentSourceAccess`.
-- Enchantment modifiers read Minestom's registries through `withLootModifierRegistries`.
-- `filtered` delegates item matching through `withItemPredicateMatcher`.
+</TabItem>
+</Tabs>
 
-Missing required context values fail clearly when the relevant behavior is evaluated. Tables that use only item entries
-and context-free modifiers do not need these hooks.
+The shared loot fields are applied by the library: entries support `weight`, `quality`, `condition`, and `modifier`; loot
+modifiers support `condition`. Implementations provide only their type-specific fields and behavior. Custom types must
+be registered under unique namespaced keys before their codec is used.
 
-The evaluator accepts `java.util.Random`, so callers control the random stream and tests can use seeded values. Its
-distribution is suitable for deterministic tests with this API, but it does not promise seed-for-seed output parity with
-Minecraft's internal random generator.
+## Related modules
 
-## Create vanilla Minestom contexts
-
-`DataContext` provides Minestom helpers for the common vanilla loot contexts:
-
-- `DataContext.blockBreak(...)` and `DataContext.blockInteract(...)` create block contexts. Each has an overload taking
-  its corresponding Minestom player event.
-- `DataContext.entityDeath(...)` accepts an entity or `EntityDeathEvent`. Pass the lethal `Damage` when available;
-  Minestom's death event does not include attacker or damage-source details.
-- `DataContext.containerLoot(...)` accepts an instance and container block position, or an `InventoryOpenEvent` plus
-  that position. The event does not identify the container's world position.
-- `DataContext.fishing(...)` accepts the fishing-hook entity and infers its instance, origin, and current main-hand rod.
-  Pass the rod explicitly if the owner has changed hands since casting.
-
-These helpers install Minestom registries and environment access, random-sequence handling, and vanilla predicate and
-location evaluators. Block contexts also provide block-state, block-entity component, and dynamic-loot access. Callers
-can override context behaviors with `withBehaviour`; other vanilla context types remain caller-composed for now.
-
-Java callers can use the equivalent static methods on `VanillaLootContexts`, for example
-`VanillaLootContexts.blockBreak(event)`. Each factory also has an overload accepting all of its context options.
+- [Datapack primitives](./datapack-primitives/) documents providers, predicates, slot sources, and `DataContext`.
+- [Data-driven definitions](./data-driven/) documents loading and reloading definitions from files.
