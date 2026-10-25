@@ -12,18 +12,18 @@ fun createSlotSourceCodec(registry: Registry<SlotSourceType>): Codec<SlotSource>
         { id -> registry.get(Key.key(id))?.codec(slotSourceCodec) },
         { source -> registry.getKey(source.type())?.key()?.asString() },
     )
-    Codec.Either<List<SlotSource>, SlotSource>(slotSourceCodec.list(), typedCodec).transform(
+    Codec.Either(slotSourceCodec.list(), typedCodec).transform(
         { encoded ->
-            encoded.unify<SlotSource>(
+            encoded.unify(
                 { sources -> GroupSlotSource(sources) },
                 { source -> source },
             )
         },
         { source ->
             if (source is GroupSlotSource) {
-                net.minestom.server.utils.Either.left<List<SlotSource>, SlotSource>(source.sources)
+                net.minestom.server.utils.Either.left(source.sources)
             } else {
-                net.minestom.server.utils.Either.right<List<SlotSource>, SlotSource>(source)
+                net.minestom.server.utils.Either.right(source)
             }
         },
     )

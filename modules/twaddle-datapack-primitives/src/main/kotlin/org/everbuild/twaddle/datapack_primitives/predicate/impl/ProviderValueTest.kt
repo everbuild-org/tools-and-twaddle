@@ -28,13 +28,12 @@ internal fun <T> providerValueTestCodec(
         boundsCodec,
     ).transform(
         { value -> value.unify<ProviderValueTest<T>>(ProviderValueTest<T>::Exact, { it }) },
-        { test ->
-            when (test) {
-                is ProviderValueTest.Exact -> Either.left(test.value)
-                is ProviderValueTest.Bounds -> Either.right(test)
-            }
-        },
-    )
+    ) { test ->
+        when (test) {
+            is ProviderValueTest.Exact -> Either.left(test.value)
+            is ProviderValueTest.Bounds -> Either.right(test)
+        }
+    }
 }
 
 internal fun <T> ProviderValueTest<T>.matches(

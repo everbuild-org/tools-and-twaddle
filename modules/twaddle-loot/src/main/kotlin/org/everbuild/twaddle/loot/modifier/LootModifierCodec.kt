@@ -30,8 +30,7 @@ fun createLootModifierCodec(
         taggedCodec,
         LootModifier::withoutConditions,
         "condition", predicateCodec.listOrSingle().optional(emptyList()), LootModifier::conditions,
-        { modifier, conditions ->
-            if (conditions.isEmpty()) modifier else LootModifierWithConditions(modifier, conditions)
-        },
-    )!!
+    ) { modifier, conditions ->
+        if (conditions.isEmpty()) modifier else LootModifierWithConditions(modifier, conditions)
+    }!!
 }

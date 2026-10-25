@@ -24,7 +24,7 @@ private data class EnchantmentLevelDeclaration(
 ) : NumberProviderDeclaration<Float> {
     override fun type() = NumberProviderKeys.ENCHANTMENT_LEVEL
     override fun get(context: DataContext, random: Random): Float {
-        val levels = context.get(EnchantmentLevelContext)?.enchantments()?.values?.toList().orEmpty()
+        val levels = context[EnchantmentLevelContext]?.enchantments()?.values?.toList().orEmpty()
         val level = if (levels.isEmpty()) 0 else levels[random.nextInt(levels.size)]
         return amount.at(level)
     }

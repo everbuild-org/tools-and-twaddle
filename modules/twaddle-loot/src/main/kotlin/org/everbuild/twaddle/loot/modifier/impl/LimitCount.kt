@@ -44,11 +44,11 @@ internal class LimitCountLootModifierType : LootModifierType {
     ) = StructCodec.struct(
         "limit",
         Codec.Either(Codec.INT, rangeCodec(intNumberProviderCodec)).transform(
-            { either -> either.unify<ItemCountLimit>({ ItemCountLimit.Exact(it) }, { it }) },
+            { either -> either.unify({ ItemCountLimit.Exact(it) }, { it }) },
             { limit ->
                 when (limit) {
-                    is ItemCountLimit.Exact -> Either.left<Int, ItemCountLimit.Range>(limit.count)
-                    is ItemCountLimit.Range -> Either.right<Int, ItemCountLimit.Range>(limit)
+                    is ItemCountLimit.Exact -> Either.left(limit.count)
+                    is ItemCountLimit.Range -> Either.right(limit)
                 }
             },
         ),
