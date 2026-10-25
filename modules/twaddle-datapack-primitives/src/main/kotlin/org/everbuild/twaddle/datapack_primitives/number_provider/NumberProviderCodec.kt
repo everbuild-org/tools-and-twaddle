@@ -8,11 +8,11 @@ import org.everbuild.twaddle.datapack_primitives.predicate.ContextPredicate
 
 /** Builds a recursive provider codec, including the vanilla scalar form for constants. */
 fun <T> createNumberProviderCodec(
-    registry: Registry<org.everbuild.twaddle.datapack_primitives.number_provider.NumberProviderType<T>>,
+    registry: Registry<NumberProviderType<T>>,
     conditionCodec: Codec<ContextPredicate>,
-    arithmetic: org.everbuild.twaddle.datapack_primitives.number_provider.NumberProviderArithmetic<T>,
-    floatProviderCodec: Codec<org.everbuild.twaddle.datapack_primitives.number_provider.NumberProviderDeclaration<Float>>? = null,
-): Codec<org.everbuild.twaddle.datapack_primitives.number_provider.NumberProviderDeclaration<T>> = Codec.Recursive { providerCodec ->
+    arithmetic: NumberProviderArithmetic<T>,
+    floatProviderCodec: Codec<NumberProviderDeclaration<Float>>? = null,
+): Codec<NumberProviderDeclaration<T>> = Codec.Recursive { providerCodec ->
     require(arithmetic.binomial == null || floatProviderCodec != null) {
         "The binomial provider requires a float number-provider codec"
     }

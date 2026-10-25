@@ -216,7 +216,7 @@ internal class MinestomEntityPredicateMatcher(
     }
 
     private fun matchesFishingHook(entity: Entity, predicate: FishingHookPredicate): Boolean {
-        val meta = entity.entityMeta as? FishingHookMeta ?: return false
+        if (entity.entityMeta !is FishingHookMeta) return false
         if (predicate.inOpenWater != null) {
             error("Minestom exposes fishing-hook catchability, but not vanilla open-water state")
         }

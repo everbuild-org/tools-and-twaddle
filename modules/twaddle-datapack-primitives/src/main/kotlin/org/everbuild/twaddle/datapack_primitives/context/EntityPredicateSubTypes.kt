@@ -7,37 +7,33 @@ import net.minestom.server.codec.StructCodec
 data class EntityTypePredicate(val types: RegistryEntrySet) : EntityPredicateSubPredicate
 
 internal object EntityTypePredicateType : EntityPredicateSubPredicateType {
-    override fun codec() = registryEntrySetCodec.transform<EntityPredicateSubPredicate>(
+    override fun codec(): Codec<EntityPredicateSubPredicate> = registryEntrySetCodec.transform<EntityPredicateSubPredicate>(
         ::EntityTypePredicate,
-        { (it as EntityTypePredicate).types },
-    )
+    ) { (it as EntityTypePredicate).types }
 }
 
 data class LocationEntityPredicate(val location: LocationPredicate) : EntityPredicateSubPredicate
 
 internal object LocationPredicateSubType : EntityPredicateSubPredicateType {
-    override fun codec() = LOCATION_PREDICATE_CODEC.transform<EntityPredicateSubPredicate>(
+    override fun codec(): Codec<EntityPredicateSubPredicate> = LOCATION_PREDICATE_CODEC.transform<EntityPredicateSubPredicate>(
         ::LocationEntityPredicate,
-        { (it as LocationEntityPredicate).location },
-    )
+    ) { (it as LocationEntityPredicate).location }
 }
 
 data class TeamPredicate(val team: String) : EntityPredicateSubPredicate
 
 internal object TeamPredicateType : EntityPredicateSubPredicateType {
-    override fun codec() = Codec.STRING.transform<EntityPredicateSubPredicate>(
+    override fun codec(): Codec<EntityPredicateSubPredicate> = Codec.STRING.transform<EntityPredicateSubPredicate>(
         ::TeamPredicate,
-        { (it as TeamPredicate).team },
-    )
+    ) { (it as TeamPredicate).team }
 }
 
 data class PeriodicTickPredicate(val period: Int) : EntityPredicateSubPredicate
 
 internal object PeriodicTickPredicateType : EntityPredicateSubPredicateType {
-    override fun codec() = Codec.INT.transform<EntityPredicateSubPredicate>(
+    override fun codec(): Codec<EntityPredicateSubPredicate> = Codec.INT.transform<EntityPredicateSubPredicate>(
         ::PeriodicTickPredicate,
-        { (it as PeriodicTickPredicate).period },
-    )
+    ) { (it as PeriodicTickPredicate).period }
 }
 
 data class EntityTagsPredicate(
@@ -120,7 +116,7 @@ private val entityEffectPredicateCodec = StructCodec.struct(
 
 internal object EntityEffectsPredicateType : EntityPredicateSubPredicateType {
     override fun codec(): Codec<EntityPredicateSubPredicate> = Codec.KEY.mapValue(entityEffectPredicateCodec)
-        .transform<EntityPredicateSubPredicate>(::EntityEffectsPredicate) { (it as EntityEffectsPredicate).effects }
+        .transform(::EntityEffectsPredicate) { (it as EntityEffectsPredicate).effects }
 }
 
 data class EntityMovementPredicate(
@@ -153,33 +149,31 @@ internal object EntityPassengersPredicateType : EntityPredicateSubPredicateType 
     override fun codec(): Codec<EntityPredicateSubPredicate> = error("Requires recursive entity-predicate codec")
 
     override fun codec(entityPredicateCodec: Codec<EntityPredicate>): Codec<EntityPredicateSubPredicate> =
-        entityPredicateCodec.list().transform<EntityPredicateSubPredicate>(
+        entityPredicateCodec.list().transform(
             ::EntityPassengersPredicate,
-            { (it as EntityPassengersPredicate).passengers },
-        )
+        ) { (it as EntityPassengersPredicate).passengers }
 }
 
 internal object EntityNestedPredicateType : EntityPredicateSubPredicateType {
     override fun codec(): Codec<EntityPredicateSubPredicate> = error("Requires recursive entity-predicate codec")
 
     override fun codec(entityPredicateCodec: Codec<EntityPredicate>): Codec<EntityPredicateSubPredicate> =
-        entityPredicateCodec.transform<EntityPredicateSubPredicate>(
+        entityPredicateCodec.transform(
             ::EntityNestedPredicate,
-            { (it as EntityNestedPredicate).predicate },
-    )
+        ) { (it as EntityNestedPredicate).predicate }
 }
 
 data class EntityEquipmentPredicate(val equipment: Map<String, Codec.RawValue>) : EntityPredicateSubPredicate
 data class EntitySlotsPredicate(val slots: Map<String, Codec.RawValue>) : EntityPredicateSubPredicate
 
 internal object EntityEquipmentPredicateType : EntityPredicateSubPredicateType {
-    override fun codec() = Codec.STRING.mapValue(Codec.RAW_VALUE)
-        .transform<EntityPredicateSubPredicate>(::EntityEquipmentPredicate, { (it as EntityEquipmentPredicate).equipment })
+    override fun codec(): Codec<EntityPredicateSubPredicate> = Codec.STRING.mapValue(Codec.RAW_VALUE)
+        .transform(::EntityEquipmentPredicate) { (it as EntityEquipmentPredicate).equipment }
 }
 
 internal object EntitySlotsPredicateType : EntityPredicateSubPredicateType {
-    override fun codec() = Codec.STRING.mapValue(Codec.RAW_VALUE)
-        .transform<EntityPredicateSubPredicate>(::EntitySlotsPredicate, { (it as EntitySlotsPredicate).slots })
+    override fun codec(): Codec<EntityPredicateSubPredicate> = Codec.STRING.mapValue(Codec.RAW_VALUE)
+        .transform(::EntitySlotsPredicate) { (it as EntitySlotsPredicate).slots }
 }
 
 data class FishingHookPredicate(val inOpenWater: Boolean?) : EntityPredicateSubPredicate

@@ -10,7 +10,6 @@ import net.minestom.server.registry.Registries
 import net.minestom.server.registry.Registry
 import net.minestom.server.registry.RegistryKey
 import net.minestom.server.registry.RegistryTranscoder
-import net.minestom.server.instance.fluid.Fluid
 import org.everbuild.twaddle.datapack_primitives.context.BlockLocationPredicate
 import org.everbuild.twaddle.datapack_primitives.context.ContextLocation
 import org.everbuild.twaddle.datapack_primitives.context.FluidLocationPredicate
@@ -31,7 +30,7 @@ internal class VanillaLocationPredicateEvaluator(
     fun matches(position: ContextLocation, predicate: LocationPredicate): Boolean {
         if (!matchesCoordinates(position, predicate)) return false
 
-        val dimension = instance.getDimensionType()
+        val dimension = instance.dimensionType
         if (predicate.dimension != null && dimension.key() != predicate.dimension) return false
         predicate.structures?.let { structures ->
             val matcher = structureMatcher
@@ -150,7 +149,7 @@ internal class VanillaLocationPredicateEvaluator(
 
     private fun blocksMotion(block: Block): Boolean = registries.blocks()
         .getTag(BlockTags.BLOCKS_MOTION)
-        ?.contains(RegistryKey.of<Block>(block.key())) == true
+        ?.contains(RegistryKey.of(block.key())) == true
 
     private fun <T> matchesEntrySet(
         entries: RegistryEntrySet,

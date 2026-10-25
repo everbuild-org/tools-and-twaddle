@@ -44,14 +44,14 @@ fun interface EntityPredicateSubPredicateType {
 /** Creates a map codec that selects an entry codec from the component or sub-predicate registry. */
 fun createEntityPredicateCodec(registry: Registry<EntityPredicateSubPredicateType>): Codec<EntityPredicate> =
     Codec.Recursive { entityPredicateCodec ->
-        Codec.KEY.mapValueTyped({ key ->
+        Codec.KEY.mapValueTyped { key ->
             val subPredicateType = registry.get(key)
             if (subPredicateType != null) {
                 subPredicateValueCodec(key, subPredicateType, entityPredicateCodec)
             } else {
                 componentValueCodec(key) ?: rawValueCodec(key)
             }
-        }).transform(::EntityPredicate, EntityPredicate::subPredicates)
+        }.transform(::EntityPredicate, EntityPredicate::subPredicates)
     }
 
 internal val rawEntityPredicateCodec: Codec<EntityPredicate> = Codec.KEY.mapValue(Codec.RAW_VALUE).transform(

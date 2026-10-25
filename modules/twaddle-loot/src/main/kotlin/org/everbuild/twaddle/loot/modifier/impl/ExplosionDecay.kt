@@ -19,7 +19,7 @@ data object ExplosionDecayLootModifier : LootModifier {
 }
 
 internal class ExplosionDecayLootModifierType : LootModifierType {
-    override fun codec(modifierCodec: Codec<LootModifier>, predicateCodec: Codec<ContextPredicate>, intNumberProviderCodec: Codec<NumberProviderDeclaration<Int>>, floatNumberProviderCodec: Codec<NumberProviderDeclaration<Float>>) =
+    override fun codec(modifierCodec: Codec<LootModifier>, predicateCodec: Codec<ContextPredicate>, intNumberProviderCodec: Codec<NumberProviderDeclaration<Int>>, floatNumberProviderCodec: Codec<NumberProviderDeclaration<Float>>): StructCodec<out LootModifier> =
         StructCodec.struct { ExplosionDecayLootModifier }
 
     override fun apply(modifier: LootModifier, item: ItemStack, context: DataContext, random: Random): ItemStack? {
