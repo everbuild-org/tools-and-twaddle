@@ -1,5 +1,7 @@
 ignore:
   - "testserver"
+  # Java forwarding facade; behavior is covered through the DataContext factories.
+  - "modules/twaddle-loot/src/main/kotlin/org/everbuild/twaddle/loot/VanillaLootContexts.kt"
 
 coverage:
   status:
