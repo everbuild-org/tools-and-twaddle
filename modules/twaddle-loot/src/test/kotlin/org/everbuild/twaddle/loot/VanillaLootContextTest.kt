@@ -6,25 +6,40 @@ import io.kotest.assertions.throwables.shouldThrow
 import io.kotest.matchers.shouldBe
 import io.kotest.matchers.shouldNotBe
 import net.kyori.adventure.key.Key
+import net.kyori.adventure.nbt.BinaryTagTypes
 import net.kyori.adventure.nbt.CompoundBinaryTag
+import net.kyori.adventure.nbt.ListBinaryTag
+import net.kyori.adventure.nbt.StringBinaryTag
 import net.kyori.adventure.text.Component
 import net.minestom.server.codec.Codec
 import net.minestom.server.codec.Result
 import net.minestom.server.codec.Transcoder
+import net.minestom.server.MinecraftServer
 import net.minestom.server.component.DataComponents
 import net.minestom.server.coordinate.BlockVec
 import net.minestom.server.coordinate.Pos
 import net.minestom.server.entity.Entity
+import net.minestom.server.entity.EntityCreature
 import net.minestom.server.entity.EntityType
 import net.minestom.server.entity.EquipmentSlot
 import net.minestom.server.entity.LivingEntity
+import net.minestom.server.entity.PlayerHand
 import net.minestom.server.entity.damage.Damage
 import net.minestom.server.entity.damage.DamageType
 import net.minestom.server.entity.metadata.animal.SheepMeta
 import net.minestom.server.entity.metadata.cube.AbstractCubeMeta
+import net.minestom.server.entity.metadata.other.FishingHookMeta
+import net.minestom.server.event.entity.EntityDeathEvent
+import net.minestom.server.event.inventory.InventoryOpenEvent
+import net.minestom.server.event.player.PlayerBlockBreakEvent
+import net.minestom.server.event.player.PlayerBlockInteractEvent
 import net.minestom.server.instance.block.Block
+import net.minestom.server.instance.block.BlockFace
+import net.minestom.server.inventory.Inventory
+import net.minestom.server.inventory.InventoryType
 import net.minestom.server.item.ItemStack
 import net.minestom.server.item.Material
+import net.minestom.server.item.component.CustomData
 import net.minestom.server.potion.Potion
 import net.minestom.server.potion.PotionEffect
 import net.minestom.server.registry.RegistryKey
@@ -146,18 +161,23 @@ val VanillaLootContextTests by testSuite("Vanilla loot contexts") {
     envTest("entity matchers evaluate distance, movement, cadence, tags, and vehicle roles") { env ->
         val instance = env.createEmptyInstance()
         val pig = Entity(EntityType.PIG)
+        val target = Entity(EntityType.SHEEP)
+        val hunter = EntityCreature(EntityType.PIG).apply { this.target = target }
         val context = DataContext.blockBreak(
             instance = instance,
             block = Block.STONE,
             blockPosition = BlockVec(2, 3, 4),
-            entityTargets = mapOf("this" to pig),
+            entityTargets = mapOf("this" to pig, "hunter" to hunter),
         )
         val matcher = context[EntityPredicateContext]
 
         matcher.matches(
             "this",
             decodeEntityPredicate("""
-                {"minecraft:distance":{"x":2.5,"y":3.5,"z":4.5}}
+                {"minecraft:distance":{
+                  "x":2.5,"y":3.5,"z":4.5,
+                  "horizontal":{"min":5.0},"absolute":{"min":6.0}
+                }}
             """),
         ) shouldBe true
         matcher.matches(
@@ -167,10 +187,14 @@ val VanillaLootContextTests by testSuite("Vanilla loot contexts") {
             """),
         ) shouldBe false
         matcher.matches("this", decodeEntityPredicate("""{"minecraft:periodic_tick":1}""")) shouldBe true
+        matcher.matches("this", decodeEntityPredicate("""{"minecraft:periodic_tick":0}""")) shouldBe false
         matcher.matches(
             "this",
             decodeEntityPredicate("""
-                {"minecraft:movement":{"x":0.0,"y":0.0,"z":0.0,"speed":0.0}}
+                {"minecraft:movement":{
+                  "x":0.0,"y":0.0,"z":0.0,"speed":0.0,
+                  "horizontal_speed":0.0,"vertical_speed":0.0
+                }}
             """),
         ) shouldBe true
         matcher.matches(
@@ -190,6 +214,14 @@ val VanillaLootContextTests by testSuite("Vanilla loot contexts") {
                 {"minecraft:vehicle":{"minecraft:entity_type":"minecraft:pig"}}
             """),
         ) shouldBe false
+        matcher.matches(
+            "hunter",
+            decodeEntityPredicate("""{"minecraft:targeted_entity":{"minecraft:entity_type":"minecraft:sheep"}}"""),
+        ) shouldBe true
+        matcher.matches(
+            "hunter",
+            decodeEntityPredicate("""{"minecraft:targeted_entity":{"minecraft:entity_type":"minecraft:pig"}}"""),
+        ) shouldBe false
     }
 
     envTest("entity matchers combine components, flags, equipment, and unordered passengers") { env ->
@@ -205,7 +237,23 @@ val VanillaLootContextTests by testSuite("Vanilla loot contexts") {
 
         val equippedPig = LivingEntity(EntityType.PIG)
         equippedPig.setEquipment(EquipmentSlot.MAIN_HAND, ItemStack.of(Material.IRON_SWORD))
+        equippedPig.setEquipment(EquipmentSlot.OFF_HAND, ItemStack.of(Material.SHIELD))
+        equippedPig.setEquipment(EquipmentSlot.HELMET, ItemStack.of(Material.IRON_HELMET))
         equippedPig.set(DataComponents.CUSTOM_NAME, Component.text("named pig"))
+        equippedPig.set(
+            DataComponents.CUSTOM_DATA,
+            CustomData(
+                CompoundBinaryTag.builder()
+                    .put(
+                        "Tags",
+                        ListBinaryTag.builder(BinaryTagTypes.STRING)
+                            .add(StringBinaryTag.stringBinaryTag("captain"))
+                            .add(StringBinaryTag.stringBinaryTag("raid"))
+                            .build(),
+                    )
+                    .build(),
+            ),
+        )
         equippedPig.addEffect(
             Potion(
                 PotionEffect.fromKey("minecraft:speed") ?: error("Missing vanilla speed effect"),
@@ -246,8 +294,19 @@ val VanillaLootContextTests by testSuite("Vanilla loot contexts") {
 
         matcher.matches(
             "equipped",
-            decodeEntityPredicate("""{"minecraft:flags":{"is_flying":false,"is_gliding":false}}"""),
+            decodeEntityPredicate("""
+                {"minecraft:flags":{
+                  "is_baby":false,"is_on_fire":false,"is_sneaking":false,"is_sprinting":false,
+                  "is_swimming":false,"is_on_ground":false,"is_flying":false,"is_gliding":false
+                }}
+            """),
         ) shouldBe true
+        listOf(
+            "is_baby", "is_on_fire", "is_sneaking", "is_sprinting",
+            "is_swimming", "is_on_ground", "is_flying", "is_gliding",
+        ).forEach { flag ->
+            matcher.matches("equipped", decodeEntityPredicate("""{"minecraft:flags":{"$flag":true}}""")) shouldBe false
+        }
         matcher.matches(
             "equipped",
             decodeEntityPredicate("""{"minecraft:equipment":{"mainhand":{"items":"minecraft:iron_sword"}}}"""),
@@ -256,6 +315,27 @@ val VanillaLootContextTests by testSuite("Vanilla loot contexts") {
             "equipped",
             decodeEntityPredicate("""{"minecraft:slots":{"main_hand":{"items":"minecraft:iron_sword"}}}"""),
         ) shouldBe true
+        matcher.matches(
+            "equipped",
+            decodeEntityPredicate("""
+                {"minecraft:equipment":{
+                  "offhand":{"items":"minecraft:shield"},
+                  "head":{"items":"minecraft:iron_helmet"}
+                }}
+            """),
+        ) shouldBe true
+        matcher.matches(
+            "equipped",
+            decodeEntityPredicate("""
+                {"minecraft:entity_tags":{
+                  "any_of":["captain"],"all_of":["captain","raid"],"none_of":["zombie"]
+                }}
+            """),
+        ) shouldBe true
+        matcher.matches(
+            "equipped",
+            decodeEntityPredicate("""{"minecraft:entity_tags":{"none_of":["captain"]}}"""),
+        ) shouldBe false
         matcher.matches(
             "equipped",
             decodeEntityPredicate("""
@@ -269,6 +349,18 @@ val VanillaLootContextTests by testSuite("Vanilla loot contexts") {
             "equipped",
             decodeEntityPredicate("""{"minecraft:effects":{"minecraft:strength":{}}}"""),
         ) shouldBe false
+        listOf(
+            "\"amplifier\":3",
+            "\"duration\":{\"min\":1000}",
+            "\"ambient\":false",
+            "\"visible\":false",
+            "\"show_particles\":true",
+        ).forEach { mismatch ->
+            matcher.matches(
+                "equipped",
+                decodeEntityPredicate("""{"minecraft:effects":{"minecraft:speed":{$mismatch}}}"""),
+            ) shouldBe false
+        }
 
         val customName = DataComponents.CUSTOM_NAME
         val customNameKey = Key.key("minecraft:custom_name")
@@ -370,6 +462,11 @@ val VanillaLootContextTests by testSuite("Vanilla loot contexts") {
         shouldThrow<IllegalStateException> {
             matcher.matches("pig", decodeEntityPredicate("""{"minecraft:unknown_modded_field":{}}"""))
         }
+        val rawKey = Key.key("loot_test:raw")
+        val rawPredicate = EntityPredicate(
+            mapOf(rawKey to EntityPredicateValue.Raw(rawKey, rawValue("{}"))),
+        )
+        shouldThrow<IllegalStateException> { matcher.matches("pig", rawPredicate) }
     }
 
     envTest("location predicates evaluate fluid, light, biome, sky visibility, and smoke") { env ->
@@ -397,6 +494,18 @@ val VanillaLootContextTests by testSuite("Vanilla loot contexts") {
                 fluid = fluidPredicate.fluid?.copy(state = mapOf("level" to LocationRange("0", "0"))),
             ),
         ) shouldBe true
+        location.evaluator.matches(
+            location.origin,
+            fluidPredicate.copy(
+                fluid = fluidPredicate.fluid?.copy(state = mapOf("level" to LocationRange("0", "1"))),
+            ),
+        ) shouldBe true
+        location.evaluator.matches(
+            location.origin,
+            fluidPredicate.copy(
+                fluid = fluidPredicate.fluid?.copy(state = mapOf("level" to LocationRange(null, "-1"))),
+            ),
+        ) shouldBe false
         location.evaluator.matches(
             location.origin,
             fluidPredicate.copy(
@@ -436,6 +545,38 @@ val VanillaLootContextTests by testSuite("Vanilla loot contexts") {
         location.evaluator.matches(location.origin, LocationPredicate(smokey = true)) shouldBe true
         instance.setBlock(BlockVec(position.blockX(), position.blockY() - 1, position.blockZ()), Block.DIRT)
         location.evaluator.matches(location.origin, LocationPredicate(smokey = true)) shouldBe false
+
+        val distantTarget = BlockVec(6, 10, 4)
+        instance.setBlock(distantTarget, Block.AIR)
+        instance.setBlock(BlockVec(6, 4, 4), campfire)
+        instance.setBlock(BlockVec(6, 3, 4), Block.HAY_BLOCK)
+        val distantLocation = DataContext.blockBreak(instance, Block.AIR, distantTarget)[LocationContextKey]
+        distantLocation.evaluator.matches(distantLocation.origin, LocationPredicate(smokey = true)) shouldBe true
+        instance.setBlock(BlockVec(6, 7, 4), Block.STONE)
+        distantLocation.evaluator.matches(distantLocation.origin, LocationPredicate(smokey = true)) shouldBe false
+        instance.setBlock(BlockVec(6, 7, 4), Block.AIR)
+        instance.setBlock(BlockVec(6, 3, 4), Block.DIRT)
+        distantLocation.evaluator.matches(distantLocation.origin, LocationPredicate(smokey = true)) shouldBe false
+    }
+
+    envTest("waterlogged blocks expose water to fluid location predicates") { env ->
+        val instance = env.createEmptyInstance()
+        val position = BlockVec(1, 2, 3)
+        instance.loadChunk(position.chunkX(), position.chunkZ()).join()
+        val waterloggedStairs = requireNotNull(Block.fromKey(Key.key("minecraft:oak_stairs")))
+            .withProperty("waterlogged", "true")
+        instance.setBlock(position, waterloggedStairs)
+
+        val location = DataContext.blockBreak(instance, waterloggedStairs, position)[LocationContextKey]
+        location.evaluator.matches(
+            location.origin,
+            LocationPredicate(
+                fluid = FluidLocationPredicate(
+                    fluids = RegistryEntrySet(listOf(RegistryEntryReference(Key.key("minecraft:water")))),
+                    state = mapOf("level" to LocationRange("0", "0")),
+                ),
+            ),
+        ) shouldBe true
     }
 
     envTest("container, interaction, and entity-death contexts expose their vanilla roles") { env ->
@@ -475,6 +616,119 @@ val VanillaLootContextTests by testSuite("Vanilla loot contexts") {
         val projectilePredicate = decodeEntityPredicate("""{"minecraft:entity_type":"minecraft:arrow"}""")
         damagedDeath[EntityPredicateContext].matches("direct_attacker", projectilePredicate) shouldBe true
         damagedDeath[EntityPredicateContext].matches("direct_killer", projectilePredicate) shouldBe true
+    }
+
+    envTest("player block breaks, empty interaction contexts, and fishing expose their context data") { env ->
+        val instance = env.createEmptyInstance()
+        instance.loadChunk(0, 0).join()
+        val playerCreation = java.util.concurrent.FutureTask { env.createPlayer(instance, Pos.ZERO) }
+        Thread.startVirtualThread(playerCreation).join()
+        val player = playerCreation.get()
+        player.setInstance(instance, Pos.ZERO).join()
+        val tool = ItemStack.of(Material.IRON_PICKAXE)
+        player.setEquipment(EquipmentSlot.MAIN_HAND, tool)
+        val playerPredicate = decodeEntityPredicate("""{"minecraft:entity_type":"minecraft:player"}""")
+
+        val blockBreak = DataContext.blockBreak(
+            instance = instance,
+            block = Block.STONE,
+            blockPosition = BlockVec(1, 2, 3),
+            entity = player,
+            tool = tool,
+        )
+        blockBreak[KilledByPlayerContext] shouldBe true
+        blockBreak[EntityPredicateContext].matches("killer_player", playerPredicate) shouldBe true
+        blockBreak[ToolPredicateContext].matches(rawValue("""{"items":"minecraft:iron_pickaxe"}""")) shouldBe true
+
+        val teamName = "twt" + java.util.UUID.randomUUID().toString().replace("-", "").take(8)
+        val teamManager = MinecraftServer.getTeamManager()
+        val team = teamManager.createTeam(teamName)
+        val pig = Entity(EntityType.PIG)
+        try {
+            team.addMembers(listOf(player.username, pig.uuid.toString()))
+            val teamPredicate = decodeEntityPredicate("""{"minecraft:team":"$teamName"}""")
+            blockBreak[EntityPredicateContext].matches("this", teamPredicate) shouldBe true
+            val pigContext = DataContext.blockBreak(
+                instance = instance,
+                block = Block.STONE,
+                blockPosition = BlockVec.ZERO,
+                entityTargets = mapOf("pig" to pig),
+            )
+            pigContext[EntityPredicateContext].matches("pig", teamPredicate) shouldBe true
+            pigContext[EntityPredicateContext].matches("missing", teamPredicate) shouldBe false
+        } finally {
+            teamManager.deleteTeam(teamName)
+        }
+
+        val breakEvent = PlayerBlockBreakEvent(
+            player,
+            instance,
+            Block.STONE,
+            Block.AIR,
+            BlockVec(1, 2, 3),
+            BlockFace.TOP,
+        )
+        val eventBreak = DataContext.blockBreak(breakEvent)
+        eventBreak[EntityPredicateContext].matches("attacking_player", playerPredicate) shouldBe true
+        eventBreak[LocationContextKey].origin shouldBe ContextLocation(1.5, 2.5, 3.5)
+
+        val noActorInteraction = DataContext.blockInteract(instance, Block.STONE, BlockVec.ZERO)
+        noActorInteraction[EntityPredicateContext].matches("interacting_entity", decodePigPredicate()) shouldBe false
+
+        val interactionEvent = PlayerBlockInteractEvent(
+            player,
+            PlayerHand.MAIN,
+            instance,
+            Block.STONE,
+            BlockVec(2, 3, 4),
+            Pos.ZERO,
+            BlockFace.TOP,
+        )
+        DataContext.blockInteract(interactionEvent)[EntityPredicateContext]
+            .matches("interacting_entity", playerPredicate) shouldBe true
+        DataContext.blockInteract(interactionEvent)[ToolPredicateContext]
+            .matches(rawValue("""{"items":"minecraft:iron_pickaxe"}""")) shouldBe true
+
+        val openerEvent = InventoryOpenEvent(Inventory(InventoryType.CHEST_1_ROW, Component.empty()), player)
+        val openedContainer = DataContext.containerLoot(openerEvent, BlockVec(4, 5, 6))
+        openedContainer[EntityPredicateContext].matches("this", playerPredicate) shouldBe true
+
+        val deceased = Entity(EntityType.PIG)
+        deceased.setInstance(instance, Pos(8.0, 9.0, 10.0)).join()
+        val deathEvent = EntityDeathEvent(deceased)
+        val eventDeath = DataContext.entityDeath(deathEvent)
+        eventDeath[EntityPredicateContext].matches("this", decodePigPredicate()) shouldBe true
+        val playerDamage = Damage(
+            RegistryKey.of<DamageType>(Key.key("minecraft:player_attack")),
+            player,
+            player,
+            null,
+            1f,
+        )
+        val playerKill = DataContext.entityDeath(entity = deceased, damage = playerDamage)
+        playerKill[KilledByPlayerContext] shouldBe true
+        playerKill[EntityPredicateContext].matches("attacking_player", playerPredicate) shouldBe true
+        playerKill[ToolPredicateContext].matches(rawValue("""{"items":"minecraft:iron_pickaxe"}""")) shouldBe true
+
+        val hook = Entity(EntityType.FISHING_BOBBER)
+        hook.setInstance(instance, Pos(5.0, 6.0, 7.0)).join()
+        val fishingRod = ItemStack.of(Material.FISHING_ROD)
+        player.setEquipment(EquipmentSlot.MAIN_HAND, fishingRod)
+        (hook.entityMeta as FishingHookMeta).setOwnerEntity(player)
+        val ownerRodContext = DataContext.fishing(hook)
+        ownerRodContext[ToolPredicateContext].matches(rawValue("""{"items":"minecraft:fishing_rod"}""")) shouldBe true
+        val fishing = DataContext.fishing(
+            fishingHook = hook,
+            tool = fishingRod,
+            origin = Pos(8.0, 9.0, 10.0),
+        )
+
+        fishing[LocationContextKey].origin shouldBe ContextLocation(8.0, 9.0, 10.0)
+        fishing[EntityPredicateContext].matches(
+            "this",
+            decodeEntityPredicate("""{"minecraft:type_specific/fishing_hook":{}}"""),
+        ) shouldBe true
+        fishing[ToolPredicateContext].matches(rawValue("""{"items":"minecraft:fishing_rod"}""")) shouldBe true
     }
 
     envTest("block entity loot sources resolve native contents and reject unknown sources") { env ->

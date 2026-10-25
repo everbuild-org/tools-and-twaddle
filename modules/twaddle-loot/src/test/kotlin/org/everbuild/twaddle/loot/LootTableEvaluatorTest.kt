@@ -17,6 +17,7 @@ import org.everbuild.twaddle.loot.entry.createVanillaLootEntryTypeRegistry
 import org.everbuild.twaddle.loot.withDynamicLootResolver
 import org.everbuild.twaddle.loot.withLootLuck
 import org.everbuild.twaddle.loot.entry.impl.AlternativesLootEntryData
+import org.everbuild.twaddle.loot.entry.impl.GroupLootEntryData
 import org.everbuild.twaddle.loot.entry.impl.EmptyLootEntryData
 import org.everbuild.twaddle.loot.entry.impl.ItemLootEntryData
 import org.everbuild.twaddle.loot.entry.impl.LootTableReferenceEntryData
@@ -26,6 +27,7 @@ import org.everbuild.twaddle.loot.entry.impl.DynamicLootEntryData
 import org.everbuild.twaddle.loot.entry.impl.SlotsLootEntryData
 import org.everbuild.twaddle.loot.entry.impl.TagLootEntryData
 import org.everbuild.twaddle.loot.modifier.createVanillaLootModifierTypeRegistry
+import org.everbuild.twaddle.loot.modifier.impl.DiscardLootModifier
 import org.everbuild.twaddle.loot.modifier.impl.SetCountLootModifier
 import java.util.Random
 
@@ -65,6 +67,36 @@ val lootTableEvaluatorTests by testSuite("Loot table evaluator") {
             context(),
             Random(1),
         ) shouldContainExactly List(3) { ItemStack.of(Material.STICK) }
+    }
+
+    test("groups expand every child while empty and zero-weight entries produce no loot") {
+        val grouped = entry(
+            GroupLootEntryData(
+                listOf(
+                    entry(ItemLootEntryData(Key.key("minecraft:stick"))),
+                ),
+            ),
+        )
+        val modifiedGroup = grouped.copy(modifiers = listOf(SetCountLootModifier(FixedIntProvider(2))))
+        evaluator.generate(table(modifiedGroup), context(), Random(10)) shouldBe listOf(ItemStack.of(Material.STICK, 2))
+        evaluator.generate(table(entry(GroupLootEntryData(emptyList()))), context(), Random(14)) shouldBe emptyList()
+
+        val completedSequence = entry(
+            SequenceLootEntryData(listOf(entry(ItemLootEntryData(Key.key("minecraft:diamond"))))),
+        )
+        evaluator.generate(table(completedSequence), context(), Random(15)) shouldBe listOf(ItemStack.of(Material.DIAMOND))
+
+        evaluator.generate(table(entry(EmptyLootEntryData)), context(), Random(11)) shouldBe emptyList()
+        evaluator.generate(
+            table(entry(ItemLootEntryData(Key.key("minecraft:stick"))).copy(weight = 0)),
+            context(),
+            Random(12),
+        ) shouldBe emptyList()
+        evaluator.generate(
+            table(entry(ItemLootEntryData(Key.key("minecraft:stick"))).copy(quality = 1)),
+            context().withLootLuck(Float.NaN),
+            Random(13),
+        ) shouldBe emptyList()
     }
 
     test("entry and pool predicates gate generation") {
@@ -213,6 +245,34 @@ val lootTableEvaluatorTests by testSuite("Loot table evaluator") {
         shouldThrow<IllegalStateException> {
             evaluator.generate(recursive, context().withLootTableResolver { recursive }, Random(7))
         }
+    }
+
+    test("missing runtime resolvers and invalid random sequences fail clearly") {
+        val referenced = table(entry(LootTableReferenceEntryData(Key.key("loot_test:missing"))))
+        shouldThrow<IllegalStateException> {
+            evaluator.generate(referenced, context(), Random(60))
+        }
+
+        val dynamic = table(entry(DynamicLootEntryData(Key.key("minecraft:contents"))))
+        shouldThrow<IllegalStateException> {
+            evaluator.generate(dynamic, context(), Random(61))
+        }
+
+        val sequenceTable = table(entry(EmptyLootEntryData)).copy(randomSequence = "loot_test:sequence")
+        shouldThrow<IllegalStateException> {
+            evaluator.generate(sequenceTable, context(), Random(62))
+        }
+        shouldThrow<IllegalArgumentException> {
+            evaluator.generate(sequenceTable.copy(randomSequence = "invalid key"), context(), Random(63))
+        }
+    }
+
+    test("discarded loot stays discarded through later modifiers") {
+        val discarded = entry(ItemLootEntryData(Key.key("minecraft:stick"))).copy(
+            modifiers = listOf(DiscardLootModifier, SetCountLootModifier(FixedIntProvider(4))),
+        )
+
+        evaluator.generate(table(discarded), context(), Random(64)) shouldBe emptyList()
     }
 
     test("declared random sequences use the controller from DataContext") {

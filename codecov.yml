@@ -1,5 +1,7 @@
 ignore:
   - "testserver"
+  # JaCoCo reports production sources; test source lines are not part of its coverage data.
+  - "**/src/test/**"
   # Java forwarding facade; behavior is covered through the DataContext factories.
   - "modules/twaddle-loot/src/main/kotlin/org/everbuild/twaddle/loot/VanillaLootContexts.kt"
 

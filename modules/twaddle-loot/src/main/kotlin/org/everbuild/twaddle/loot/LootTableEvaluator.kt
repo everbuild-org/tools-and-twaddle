@@ -1,6 +1,7 @@
 package org.everbuild.twaddle.loot
 
 import net.kyori.adventure.key.Key
+import net.kyori.adventure.key.InvalidKeyException
 import net.minestom.server.item.ItemStack
 import net.minestom.server.registry.Registry
 import org.everbuild.twaddle.datapack_primitives.context.DataContext
@@ -80,7 +81,7 @@ class LootTableEvaluator(
             val sequence = table.randomSequence ?: return inheritedRandom
             val key = try {
                 Key.key(sequence)
-            } catch (failure: IllegalArgumentException) {
+            } catch (failure: InvalidKeyException) {
                 throw IllegalArgumentException("Invalid loot table random_sequence '$sequence'", failure)
             }
             val controller = context.getBehaviourOrNull(RandomSequenceControllerContext)
