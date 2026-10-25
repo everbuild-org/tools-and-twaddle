@@ -1,0 +1,15 @@
+{
+  "pools": [
+    {
+      "rolls": 1,
+      "entries": [
+        {
+          "type": "minecraft:sequence",
+          "children": [
+            { "type": "minecraft:item", "name": "minecraft:diamond" }
+          ]
+        }
+      ]
+    }
+  ]
+}
