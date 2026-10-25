@@ -27,7 +27,7 @@ internal fun <T> providerValueTestCodec(
         providerCodec,
         boundsCodec,
     ).transform(
-        { value -> value.unify<ProviderValueTest<T>>(ProviderValueTest<T>::Exact, { it }) },
+        { value -> value.unify<ProviderValueTest<T>>(ProviderValueTest<T>::Exact) { it } },
     ) { test ->
         when (test) {
             is ProviderValueTest.Exact -> Either.left(test.value)

@@ -113,6 +113,7 @@ internal class VanillaLocationPredicateEvaluator(
         return key.takeIf { registries.fluid().get(it) != null }
     }
 
+    @Suppress("UnstableApiUsage")
     private fun canSeeSky(x: Int, y: Int, z: Int): Boolean {
         val dimension = instance.cachedDimensionType
         if (!dimension.hasSkylight()) return false
@@ -140,6 +141,7 @@ internal class VanillaLocationPredicateEvaluator(
         return false
     }
 
+    @Suppress("UnstableApiUsage")
     private fun blockAt(x: Int, y: Int, z: Int): Block? {
         val dimension = instance.cachedDimensionType
         if (y < dimension.minY() || y >= dimension.minY() + dimension.height()) return null

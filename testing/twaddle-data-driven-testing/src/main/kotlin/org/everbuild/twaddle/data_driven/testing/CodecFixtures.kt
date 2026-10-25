@@ -1,7 +1,6 @@
 package org.everbuild.twaddle.data_driven.testing
 
 import de.infix.testBalloon.framework.core.TestSuiteScope
-import de.infix.testBalloon.framework.core.testSuite
 import de.infix.testBalloon.framework.shared.TestRegistering
 import net.minestom.server.codec.Codec
 import org.everbuild.twaddle.data_driven.loader.CodecLoader

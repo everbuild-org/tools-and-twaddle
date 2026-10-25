@@ -22,6 +22,7 @@ internal class CopyComponentsLootModifierType : LootModifierType {
     override fun codec(modifierCodec: Codec<LootModifier>, predicateCodec: Codec<ContextPredicate>, intNumberProviderCodec: Codec<NumberProviderDeclaration<Int>>, floatNumberProviderCodec: Codec<NumberProviderDeclaration<Float>>) =
         StructCodec.struct("source", Codec.STRING, { (it as CopyComponentsLootModifier).source }, "include", Codec.KEY.list().optional(), { (it as CopyComponentsLootModifier).include }, "exclude", Codec.KEY.list().optional(), { (it as CopyComponentsLootModifier).exclude }, ::CopyComponentsLootModifier)!!
 
+    @Suppress("UnstableApiUsage")
     override fun apply(modifier: LootModifier, item: ItemStack, context: DataContext, random: Random): ItemStack {
         val declaration = modifier as CopyComponentsLootModifier
         val sourceComponents = context[LootComponentSourceAccessContext].getComponents(declaration.source) ?: return item

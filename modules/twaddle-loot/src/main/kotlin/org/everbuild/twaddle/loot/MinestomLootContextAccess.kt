@@ -32,6 +32,7 @@ internal class MinestomLootContextAccess(
     val entityTargets: Map<String, net.minestom.server.entity.Entity>,
     val structureMatcher: StructurePredicateMatcher?,
 ) {
+    @Suppress("UnstableApiUsage")
     private val blockEntityComponents by lazy { block?.let { decodeBlockEntityComponents(it, registries) } }
 
     val componentSourceAccess = LootComponentSourceAccess { source ->
@@ -110,6 +111,7 @@ private fun decodeBlockPredicate(
         .orElseThrow()
 }
 
+@Suppress("UnstableApiUsage")
 private fun decodeBlockEntityComponents(block: Block, registries: Registries): DataComponentMap? {
     val nbt = block.nbt() ?: return null
     val components = nbt.getCompound("components")
