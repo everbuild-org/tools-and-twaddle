@@ -4,10 +4,14 @@ import com.google.gson.JsonParser
 import de.infix.testBalloon.framework.core.testSuite
 import io.kotest.matchers.collections.shouldNotBeEmpty
 import io.kotest.matchers.shouldBe
+import net.kyori.adventure.key.Key
 import net.minestom.server.codec.Result
 import net.minestom.server.codec.Transcoder
 import org.everbuild.twaddle.datapack_primitives.DatapackPrimitives
+import org.everbuild.twaddle.loot.entry.createLootEntryCodec
 import org.everbuild.twaddle.loot.entry.createVanillaLootEntryTypeRegistry
+import org.everbuild.twaddle.loot.entry.impl.ItemLootEntryData
+import org.everbuild.twaddle.loot.modifier.createLootModifierCodec
 import org.everbuild.twaddle.loot.modifier.createVanillaLootModifierTypeRegistry
 import java.nio.file.Files
 import java.nio.file.Path
@@ -38,6 +42,45 @@ private fun lootTableFixtureDirectory(): Path = Path.of(
 )
 
 val lootTableCodecTests by testSuite("Loot table codecs") {
+    test("table and entry codecs provide default slot-source overloads") {
+        val tableCodec = createLootTableCodec(
+            primitives.contextPredicateCodec,
+            createVanillaLootEntryTypeRegistry(),
+            createVanillaLootModifierTypeRegistry(),
+            primitives.intNumberProviderCodec,
+            primitives.floatNumberProviderCodec,
+        )
+        val decodedTable = when (val result = tableCodec.decode(Transcoder.JSON, JsonParser.parseString("{}"))) {
+            is Result.Ok -> result.value
+            is Result.Error -> error("Could not decode table using default slot-source codec: ${result.message}")
+        }
+        decodedTable shouldBe LootTable()
+
+        val entryTypes = createVanillaLootEntryTypeRegistry()
+        val modifierCodec = createLootModifierCodec(
+            createVanillaLootModifierTypeRegistry(),
+            primitives.contextPredicateCodec,
+            primitives.intNumberProviderCodec,
+            primitives.floatNumberProviderCodec,
+        )
+        val entryCodecs = listOf(
+            createLootEntryCodec(entryTypes, primitives.contextPredicateCodec, modifierCodec),
+            createLootEntryCodec(entryTypes, primitives.contextPredicateCodec, modifierCodec, primitives.slotSourceCodec),
+        )
+        entryCodecs.forEach { codec ->
+            val decodedEntry = when (
+                val result = codec.decode(
+                    Transcoder.JSON,
+                    JsonParser.parseString("""{"type":"minecraft:item","name":"minecraft:diamond"}"""),
+                )
+            ) {
+                is Result.Ok -> result.value
+                is Result.Error -> error("Could not decode item entry: ${result.message}")
+            }
+            decodedEntry.value shouldBe ItemLootEntryData(Key.key("minecraft:diamond"))
+        }
+    }
+
     test("table defaults and singular or list modifier and condition fields decode") {
         val fixture = Files.readString(lootTableFixtureDirectory().resolve("coverage/table_codec_fields.json"))
         val table = decodeTable(fixture)
