@@ -34,11 +34,17 @@ class RuleChainEditor<T : ActivityContext>(
     }
 
     fun append(build: RuleChainDsl<T>.() -> Unit) {
-        commit(contribution.orEmpty() + newRules(build))
+        commit(buildList {
+            addAll(contribution.orEmpty())
+            addAll(newRules(build))
+        })
     }
 
     fun prepend(build: RuleChainDsl<T>.() -> Unit) {
-        commit(newRules(build) + contribution.orEmpty())
+        commit(buildList {
+            addAll(newRules(build))
+            addAll(contribution.orEmpty())
+        })
     }
 
     fun remove(rule: Rule<T>) = remove(rule.key)
@@ -88,11 +94,11 @@ class RuleChainEditor<T : ActivityContext>(
         val (rules, index) = locate(target)
         val replacements = newRules(build)
 
-        commit(
-            rules.take(index) +
-                    replacements +
-                    rules.drop(index + 1)
-        )
+        commit(buildList {
+            addAll(rules.take(index))
+            addAll(replacements)
+            addAll(rules.drop(index + 1))
+        })
     }
 
     fun build(): RuleChain<T>? =
@@ -120,7 +126,11 @@ class RuleChainEditor<T : ActivityContext>(
         index: Int,
         additions: List<Rule<T>>,
     ) {
-        commit(rules.take(index) + additions + rules.drop(index))
+        commit(buildList {
+            addAll(rules.take(index))
+            addAll(additions)
+            addAll(rules.drop(index))
+        })
     }
 
     private fun commit(rules: List<Rule<T>>) {

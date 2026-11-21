@@ -118,6 +118,7 @@ class TwaddleContextImpl private constructor(
         }
     }
 
+    @Suppress("BlockingMethodInNonBlockingContext")
     override fun shutdownNow() {
         runBlocking { shutdown() }
     }
