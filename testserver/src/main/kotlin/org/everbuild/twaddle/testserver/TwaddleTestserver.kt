@@ -1,6 +1,8 @@
 package org.everbuild.twaddle.testserver
 
 import kotlinx.coroutines.awaitCancellation
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 import net.kyori.adventure.text.Component
 import net.kyori.adventure.text.format.NamedTextColor
 import net.minestom.server.Auth
@@ -52,7 +54,9 @@ suspend fun main() = runTwaddleApplication { cx ->
     MinecraftServer.getCommandManager()
         .register(TestCommand())
 
-    val pngFileBytes = TestCommand::class.java.classLoader.getResourceAsStream("server-icon.png")!!.readAllBytes()
+    val pngFileBytes = withContext(Dispatchers.IO) {
+        TestCommand::class.java.classLoader.getResourceAsStream("server-icon.png")!!.use { it.readBytes() }
+    }
 
     MinecraftServer.getGlobalEventHandler()
         .listen { event: AsyncPlayerConfigurationEvent ->
